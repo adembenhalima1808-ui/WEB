@@ -1,0 +1,45 @@
+=== SECTION 1: CANDIDATE PROFILE ===
+Full Name: [Your First and Last Name]
+Title: AI & Machine Learning Engineer
+Location: Cergy / Paris Region, Île-de-France
+Target Roles: AI Developer, Machine Learning Engineer, MLOps Specialist
+Languages: French (Fluent / Native), English (Professional / Fluent)
+Availability: Immediate / Open to CDI and high-impact opportunities in Île-de-France
+
+=== SECTION 2: CORE TECHNICAL STACK ===
+Programming Languages: Python (Primary), SQL, Shell Scripting
+Machine Learning & AI Frameworks: PyTorch, Scikit-Learn, NumPy, Pandas, LangChain, Mistral AI APIs, Hugging Face
+LLM & RAG Technologies: Vector Databases (ChromaDB, FAISS), Embeddings, Prompt Engineering, Semantic Search
+Web Development & APIs: Streamlit, FastAPI, REST APIs
+Deployment & MLOps: Docker, Git, GitHub Actions, CI/CD pipelines, Virtual Environments (venv)
+
+=== SECTION 3: MATHEMATICAL & THEORETICAL FOUNDATIONS ===
+- Robust mathematical background aligned with the French engineering tradition (Bac+2 level core mathematics).
+- Strong proficiency in Linear Algebra: Singular Value Decomposition (SVD), Matrix Factorization, Eigenvectors, and Matrix Multiplications.
+- Calculus & Optimization: Gradient Descent algorithms, Loss Function Optimization, Partial Derivatives, and Convex Optimization.
+- Probability & Statistics: Bayes' Theorem, Probability Distributions, ROC-AUC metrics, cross-validation, and bias/variance trade-offs.
+- Has experience building ML algorithms (like Logistic Regression and Linear Regression) from scratch using only NumPy to understand fundamental mathematical mechanics.
+
+=== SECTION 4: FEATURED PROJECTS & ARCHITECTURE ===
+
+Project 1: Interactive Self-Representational RAG Portfolio
+- Description: Built a live, AI-native portfolio deployed using Streamlit, LangChain, ChromaDB, and Mistral AI embeddings.
+- Technical Mastery: Designed an end-to-end vector search pipeline to allow recruiters to dynamically interrogate a digital twin.
+- Architecture: Raw text ingestion -> Character text splitting -> Mistral embeddings -> Chroma vector store -> RAG chain synthesis.
+- Value: Eliminates static resume scans and provides immediate, verifiable proof of natural language processing and MLOps capabilities.
+
+Project 2: Computer Vision & Multimodal Quality Inspector
+- Description: Developed a real-time computer vision inference pipeline for defect detection and object classification.
+- Technical Stack: Python, PyTorch, Streamlit, Docker.
+- Engineering Rigor: Implemented custom data preprocessing to clean unstructured image inputs, monitored edge cases, and tracked inference latency (sub-150ms execution).
+
+=== SECTION 5: EDUCATION & ACADEMIC BACKGROUND ===
+Degree: [e.g., Master of Science in Computer Science / Data Science]
+Institution: [e.g., CY Cergy Paris University / ESSEC / Your University Name]
+Location: Cergy, France
+Relevant Coursework: Deep Learning Systems, Distributed Computing, Advanced Machine Learning, Data Structures & Algorithms, Ethics in AI.
+
+=== SECTION 6: WORK ETHIC, OWNERSHIP & ETHICAL AI ===
+- Ownership Mentality: Takes full end-to-end responsibility for projects, moving from messy unstructured data collection to tested, deployed production code.
+- Ethical AI & Governance: Deeply aware of European AI regulations, GDPR compliance, algorithmic bias mitigation, and explainable AI (XAI) standards.
+- Collaborative Skills: Able to explain technical AI trade-offs to non-technical business stakeholders, bridging the gap between mathematical execution and strategic business goals.

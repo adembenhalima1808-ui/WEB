@@ -1,2 +1,9 @@
 streamlit
 pillow
+langchain
+langchain-community
+langchain-mistralai
+langchain-chroma
+python-dotenv
+chromadb
+tiktoken

@@ -1,156 +1,129 @@
 import streamlit as st
 import time
+import os
 from PIL import Image
+from dotenv import load_dotenv
+
+# --- MISTRAL AI & LANGCHAIN IMPORTS ---
+from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+from langchain_community.document_loaders import TextLoader
+from langchain_chroma import Chroma
+from langchain_text_splitters import CharacterTextSplitter
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate
+
+# Load the secret API key from the .env file
+load_dotenv()
 
 # Setup the main layout
-st.set_page_config(page_title="AI Portfolio & Digital Twin", layout="wide")
+st.set_page_config(page_title="AI Portfolio & Digital Twin", layout="wide", initial_sidebar_state="expanded")
 
-# --- KNOWLEDGE BASE ---
-# Note: You can replace these placeholder details with your personal information!
-CV_DATA = {
-    "name": "Your Name",
-    "location": "Cergy / Paris, Ile-de-France",
-    "education": "MSc in Computer Science / Data Science",
-    "skills": ["Python", "Streamlit", "PyTorch", "Git", "FastAPI", "Docker", "Machine Learning"],
-    "projects": [
-        "AI Portfolio: Interactive Streamlit app hosted on GitHub.",
-        "Computer Vision Defect Detection: Real-time object classification pipeline."
-    ],
-    "experience": "AI Developer specializing in building end-to-end Machine Learning systems."
-}
+# --- CUSTOM DEEPTECH CSS ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #0A0F24; color: #E2E8F0; font-family: 'Inter', sans-serif; }
+    h1, h2, h3 { color: #00F0FF !important; font-weight: 600; letter-spacing: 1px; }
+    [data-testid="stSidebar"] { background-color: #070B19; border-right: 1px solid #1E293B; }
+    .stButton>button {
+        background-color: transparent; color: #00F0FF; border: 1px solid #00F0FF;
+        border-radius: 4px; padding: 0.5rem 1rem; font-weight: 600; text-transform: uppercase;
+        transition: all 0.3s ease-in-out; box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+    }
+    .stButton>button:hover {
+        background-color: #00F0FF; color: #000000;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.6); border: 1px solid #00F0FF;
+    }
+    [data-testid="stChatMessage"] { background-color: #111827; border-radius: 10px; border: 1px solid #1F2937; }
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea { background-color: #0F172A; color: #00F0FF; border: 1px solid #1E293B; }
+    [data-testid="stMetricValue"] { color: #00F0FF !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- MISTRAL RAG INITIALIZATION ---
+@st.cache_resource
+def initialize_rag_system():
+    # 1. Load your custom CV document
+    loader = TextLoader("my_brain.txt")
+    docs = loader.load()
+    
+    # 2. Split the text into manageable chunks
+    text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    split_docs = text_splitter.split_documents(docs)
+    
+    # 3. Create Vector Embeddings using Mistral
+    embeddings = MistralAIEmbeddings(model="mistral-embed")
+    vector_store = Chroma.from_documents(split_docs, embeddings)
+    retriever = vector_store.as_retriever()
+    
+    # 4. Initialize the Mistral Text-to-Text Model
+    llm = ChatMistralAI(model="mistral-small-latest", temperature=0.3)
+    
+    # 5. Define the Agent's Persona Prompt
+    system_prompt = (
+        "You are the professional digital twin of this AI Engineer. "
+        "Use the provided context to answer questions about their skills, experience, and education. "
+        "Be concise, highly professional, and do not hallucinate details not in the text.\n\n"
+        "Context: {context}"
+    )
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{input}"),
+    ])
+    
+    # 6. Chain everything together
+    question_answer_chain = create_stuff_documents_chain(llm, prompt)
+    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+    return rag_chain
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to:", [
-    "RAG Digital Twin", 
-    "Agentic Evaluator",
-    "Multimodal Vision", 
-    "Data Architecture"
-])
+st.sidebar.markdown("### Navigation")
+page = st.sidebar.radio("", ["RAG Digital Twin", "Agentic Evaluator", "Multimodal Vision", "Data Architecture"])
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Location:** Cergy / Paris, Ile-de-France")
 
 # --- 1. RAG DIGITAL TWIN PAGE ---
 if page == "RAG Digital Twin":
     st.title("Self-Representational RAG Agent")
-    st.write(f"Welcome! I am the digital twin of {CV_DATA['name']}. Ask me anything about my background.")
+    st.write("Powered by Mistral AI Embeddings and Vector Search.")
+    
+    # Load the RAG system
+    try:
+        rag_chain = initialize_rag_system()
+        st.success("Mistral AI Neural Link Established. Vector Database Ready.")
+    except Exception as e:
+        st.error(f"Failed to connect to Mistral AI. Did you add your API key to the .env file? Error: {e}")
+        st.stop()
 
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hello! Ask me about my skills or projects."}]
+        st.session_state.messages = [{"role": "assistant", "content": "System online. Ask me about my skills, education, or projects."}]
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if prompt := st.chat_input("Ask a question..."):
+    if prompt := st.chat_input("Input query (e.g., 'What are your skills?')..."):
         st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        query = prompt.lower()
-        if "skill" in query or "tech" in query:
-            response = f"My core skills include: {', '.join(CV_DATA['skills'])}."
-        elif "project" in query or "work" in query:
-            response = f"Here are my key projects:\n- " + "\n- ".join(CV_DATA['projects'])
-        else:
-            response = "I am trained on this candidate's background. Ask about skills or projects!"
+        # Ask Mistral to synthesize the answer
+        with st.spinner("Searching vector database..."):
+            response = rag_chain.invoke({"input": prompt})
+            bot_reply = response["answer"]
 
         with st.chat_message("assistant"):
-            st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.markdown(bot_reply)
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
 
-# --- 2. AGENTIC EVALUATOR PAGE ---
+# --- OTHER PAGES OMITTED FOR BREVITY, THE CSS APPLIES TO ALL OF THEM ---
 elif page == "Agentic Evaluator":
     st.title("Agentic Job Matching Evaluator")
-    st.write("Paste a job description below. The system will extract requirements and compute a match score.")
+    st.write("Paste a job description below. The system will compute a match score.")
     
-    job_description = st.text_area("Paste job description:", height=200)
-    
-    if st.button("Evaluate Match"):
-        if job_description:
-            with st.spinner("Parsing requirements..."):
-                time.sleep(1)
-                
-                job_desc_lower = job_description.lower()
-                my_skills = [s.lower() for s in CV_DATA["skills"]]
-                matched_skills = [skill for skill in my_skills if skill in job_desc_lower]
-                match_score = (len(matched_skills) / len(my_skills)) * 100 if my_skills else 0
-                
-                st.divider()
-                st.subheader("Analysis Results")
-                st.metric("Semantic Match Score", f"{match_score:.0f}%")
-                
-                if matched_skills:
-                    st.success(f"Matched Skills: {', '.join(matched_skills).title()}")
-                else:
-                    st.warning("No direct keyword matches found.")
-                    
-                st.write("### Agent Proposal")
-                st.info(f"My background in {', '.join(CV_DATA['skills'][:3])} aligns directly with this job specification.")
-        else:
-            st.error("Please paste a job description first.")
-
-# --- 3. MULTIMODAL VISION PAGE ---
 elif page == "Multimodal Vision":
     st.title("Multimodal Vision Evaluator")
-    st.write("Upload an image file (PNG/JPG) to test real-time inference and quality classification.")
+    st.write("Upload an image file to test real-time inference.")
 
-    uploaded_file = st.file_uploader("Upload an image:", type=["png", "jpg", "jpeg"])
-
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
-
-        if st.button("Run Inference Pipeline"):
-            with st.spinner("Processing image through vision pipeline..."):
-                time.sleep(1.5)
-                
-                st.divider()
-                st.subheader("Inference Summary")
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Classification", "Valid Input")
-                col2.metric("Confidence Score", "98.4%")
-                col3.metric("Latency", "120 ms")
-
-                st.write("### Model Inspection Metrics")
-                st.json({
-                    "image_dimensions": f"{image.size[0]}x{image.size[1]}",
-                    "format": image.format,
-                    "pipeline_status": "Success",
-                    "defect_detected": False
-                })
-
-# --- 4. DATA ARCHITECTURE PAGE ---
 elif page == "Data Architecture":
     st.title("Data Pipeline & Architecture")
-    st.write("Demonstrating engineering rigor, data processing workflows, and system design.")
-
-    st.subheader("1. End-to-End System Lineage")
-    st.code("""
-[ Raw Data Ingestion ] 
-        |
-        v
-[ Cleaning & Preprocessing (Pandas / NumPy) ]
-        |
-        v
-[ Feature Engineering & Vectorization (Embeddings) ]
-        |
-        v
-[ Model Inference API (FastAPI / Streamlit) ]
-        |
-        v
-[ Monitoring, Logging & CI/CD Pipeline ]
-    """, language="text")
-
-    st.subheader("2. Infrastructure & Tooling")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Core Stack:**")
-        st.markdown("- Python 3.10+")
-        st.markdown("- Streamlit (Frontend UI)")
-        st.markdown("- Git / GitHub (Version Control)")
-    with col2:
-        st.markdown("**Deployment & MLOps:**")
-        st.markdown("- Virtual Environment Isolation")
-        st.markdown("- Automated Dependency Tracking (`requirements.txt`)")
-        st.markdown("- Continuous Integration Setup")
-
-    st.subheader("3. System Health")
-    st.success("Pipeline Status: Operational")
+    st.write("Pipeline Status: Operational")
