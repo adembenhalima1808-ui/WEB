@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 from dotenv import load_dotenv
+from langchain_mistralai import ChatMistralAI
+from langchain_core.messages import HumanMessage
 
 # Import the RAG Engine
 from core.rag_engine import initialize_rag_system
@@ -91,6 +93,32 @@ st.divider()
 st.markdown("### 2. Direct Interrogation Interface")
 st.write("Chat directly with my Mistral-powered digital twin below.")
 
+# Initialize dynamic prompts in session state if they don't exist
+if "quick_prompts" not in st.session_state:
+    st.session_state.quick_prompts = [
+        "What are your core AI skills?",
+        "What projects have you built?",
+        "Why should we hire you?"
+    ]
+
+# --- DYNAMIC QUICK PROMPT CHIPS ---
+st.markdown("**⚡ Suggested Follow-ups:**")
+chip_col1, chip_col2, chip_col3 = st.columns(3)
+selected_prompt = None
+
+# Render the dynamic buttons from session state
+with chip_col1:
+    if st.button(st.session_state.quick_prompts[0], use_container_width=True, key="btn1"):
+        selected_prompt = st.session_state.quick_prompts[0]
+with chip_col2:
+    if st.button(st.session_state.quick_prompts[1], use_container_width=True, key="btn2"):
+        selected_prompt = st.session_state.quick_prompts[1]
+with chip_col3:
+    if st.button(st.session_state.quick_prompts[2], use_container_width=True, key="btn3"):
+        selected_prompt = st.session_state.quick_prompts[2]
+
+st.divider()
+
 # Load the cached RAG system from the core module
 rag_chain = initialize_rag_system()
 
@@ -101,27 +129,62 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "RAG system operational. Interrogate me about my skills or professional history."}]
 
-    # Render previous messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # --- THE FIXED-HEIGHT CHAT CONTAINER ---
+    # This locks the chat window to 500px tall with an internal scrollbar
+    chat_container = st.container(height=500, border=True)
+
+    # Render previous messages INSIDE the scrollable container
+    with chat_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
     # Chat Input Logic
-    if prompt := st.chat_input("Input professional query here..."):
-        st.chat_message("user").markdown(prompt)
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    user_input = st.chat_input("Input professional query here...")
+    prompt_to_process = user_input or selected_prompt
 
-        with st.spinner("Processing through neural chain..."):
-            try:
-                current_context = st.session_state.get("company_context", "General public evaluation.")
-                response = rag_chain.invoke({
-                    "input": prompt, 
-                    "company_context": current_context
-                })
-                bot_reply = response["answer"]
-            except Exception as e:
-                bot_reply = f"Error during inference: {e}"
+    if prompt_to_process:
+        # 1. Display user prompt inside the container immediately
+        with chat_container:
+            with st.chat_message("user"):
+                st.markdown(prompt_to_process)
+        st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
-        with st.chat_message("assistant"):
-            st.markdown(bot_reply)
+        # 2. Generate and display Assistant Answer inside the container
+        with chat_container:
+            with st.chat_message("assistant"):
+                with st.spinner("Processing through neural chain..."):
+                    try:
+                        current_context = st.session_state.get("company_context", "General public evaluation.")
+                        response = rag_chain.invoke({
+                            "input": prompt_to_process, 
+                            "company_context": current_context
+                        })
+                        bot_reply = response["answer"]
+                    except Exception as e:
+                        bot_reply = f"Error during inference: {e}"
+                
+                st.markdown(bot_reply)
         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+
+        # 4. Targeted Background Generation (Only replace the USED chip)
+        if selected_prompt in st.session_state.quick_prompts:
+            try:
+                llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7)
+                followup_instruction = (
+                    "Based on the following exchange, suggest exactly 1 short, highly relevant follow-up question "
+                    "the recruiter should ask next. Return ONLY the question text, no quotes or intro. "
+                    "Keep it under 8 words."
+                    f"\n\nRecruiter asked: {prompt_to_process}\nCandidate replied: {bot_reply}"
+                )
+                
+                new_suggestion = llm_fast.invoke([HumanMessage(content=followup_instruction)]).content.strip().strip('"')
+                
+                if new_suggestion:
+                    clicked_index = st.session_state.quick_prompts.index(selected_prompt)
+                    st.session_state.quick_prompts[clicked_index] = new_suggestion
+            except Exception:
+                pass 
+        
+        # 5. Instantly rerun the app to reset the input and auto-scroll the container to the bottom
+        st.rerun()
