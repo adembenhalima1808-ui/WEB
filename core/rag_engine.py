@@ -22,11 +22,19 @@ def initialize_rag_system():
         
         llm = ChatMistralAI(model="mistral-small-latest", temperature=0.1)
         
+        # Define the Professional Persona Prompt with Dynamic Context
+        # Define the Professional Persona Prompt with Strict Brevity Constraints
         system_prompt = (
             "You are the professional digital twin of this AI Engineer. "
-            "Use the provided context to answer questions about their skills, experience, and education. "
-            "Be concise, highly professional, and do not hallucinate details. If you don't know, state it clearly.\n\n"
-            "Context: {context}"
+            "The user is evaluating the candidate for this specific company context: {company_context}. "
+            "Tailor your answers to highlight skills relevant to this company. "
+            "CRITICAL INSTRUCTIONS FOR OUTPUT: "
+            "1. Be extremely concise, punchy, and direct. "
+            "2. Never exceed 3 sentences for a standard reply. "
+            "3. If listing skills or projects, use maximum 3 short bullet points. "
+            "4. Eliminate all fluff and filler words. Speak like a senior, confident engineer. "
+            "5. Base all answers strictly on the Candidate Context below.\n\n"
+            "Candidate Context: {context}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),

@@ -26,7 +26,14 @@ if prompt := st.chat_input("Input professional query..."):
 
     with st.spinner("Processing through neural chain..."):
         try:
-            response = rag_chain.invoke({"input": prompt})
+            # Pull the company context from memory (default to general if empty)
+            current_context = st.session_state.get("company_context", "General public evaluation.")
+            
+            # Pass BOTH the user's question and the company context to Mistral
+            response = rag_chain.invoke({
+                "input": prompt, 
+                "company_context": current_context
+            })
             bot_reply = response["answer"]
         except Exception as e:
             bot_reply = f"Error during inference: {e}"
