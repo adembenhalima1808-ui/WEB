@@ -32,8 +32,74 @@ st.markdown("""
     /* Custom Metric Styling */
     [data-testid="stMetricValue"] { color: #00F0FF !important; font-weight: 400; font-size: 2rem; }
     [data-testid="stMetricLabel"] { color: #A1A1AA !important; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;}
+    
+    /* Tech Stack Badges */
+    .badge {
+        display: inline-block; background: rgba(255, 255, 255, 0.05); color: #E4E4E7;
+        border: 1px solid #3F3F46; padding: 4px 10px; border-radius: 4px;
+        font-size: 0.75rem; font-weight: 500; margin-right: 6px; margin-bottom: 8px;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+# --- SIDEBAR CONTENT ---
+with st.sidebar:
+    st.markdown("## 🧠 Adem Ben Halima")
+    st.caption("AI & Machine Learning Engineer")
+    
+    # Styled Status Card
+    st.markdown("""
+        <div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid #27272A;">
+            <span style="color: #4ADE80; font-size: 1.1rem;">●</span> <span style="font-size: 0.9rem; color: #F8FAFC; font-weight: 600;">Open to Opportunities</span><br>
+            <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Cergy, Île-de-France</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # PDF Download Button Logic
+    try:
+        with open("resume.pdf", "rb") as pdf_file:
+            pdf_bytes = pdf_file.read()
+        st.download_button(
+            label="📄 Download Full CV",
+            data=pdf_bytes,
+            file_name="Adem_Ben_Halima_CV.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    except FileNotFoundError:
+        st.download_button(
+            label="📄 Download Full CV",
+            data=b"Please put a resume.pdf file in the root folder.",
+            file_name="Adem_Ben_Halima_CV.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    
+    st.divider()
+    
+    st.markdown("### 🛠 System Stack")
+    st.markdown("""
+        <span class="badge">Python 3.11</span>
+        <span class="badge">Mistral AI</span>
+        <span class="badge">LangChain</span>
+        <span class="badge">ChromaDB</span>
+        <span class="badge">Docker</span>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # Styled Social Buttons
+    st.markdown("### 🔗 Professional Network")
+    st.markdown("""
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="https://www.linkedin.com/in/adem-ben-halima-72a473280/" target="_blank" style="text-decoration: none; color: #E4E4E7; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; border: 1px solid #3F3F46; font-size: 0.85rem; text-align: center;">
+                💼 <strong>LinkedIn</strong> Profile
+            </a>
+            <a href="https://github.com/adembenhalima1808-ui" target="_blank" style="text-decoration: none; color: #E4E4E7; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; border: 1px solid #3F3F46; font-size: 0.85rem; text-align: center;">
+                🐙 <strong>GitHub</strong> Repository
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
 # --- HERO SECTION ---
 st.markdown("# System Architecture & AI Portfolio")
