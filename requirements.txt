@@ -4,10 +4,13 @@ beautifulsoup4
 python-dotenv
 plotly
 langchain
-langchain-mistralai
+langchain-core
 langchain-community
+langchain-mistralai
 langchain-chroma
+langchain-text-splitters
 pypdf
 reportlab
 chromadb
 sentence-transformers
+tiktoken
