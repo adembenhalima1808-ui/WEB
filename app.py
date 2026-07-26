@@ -510,7 +510,7 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
                 st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 10px rgba(138,43,226,0.5);'>Vibe Check Required</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling-in-law is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
                 
                 with st.form("egi_auth_form", clear_on_submit=True):
                     egi_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
@@ -536,7 +536,7 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
@@ -1025,7 +1025,7 @@ with tab_agent:
                     try:
                         api_key = get_heavy_model_key()
                         llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                        task_prompt = f"You are Adem's AI. Adem's sister-in-law, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sibling."
+                        task_prompt = f"You are Adem's AI. Adem's sister-in-law, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sister-in-law."
                         agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                         
                         st.markdown("#### Truth Hurts:")
