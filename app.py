@@ -110,19 +110,28 @@ def get_heavy_model_key():
 def send_webhook_alert(message):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
-        try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
-        except Exception: pass
+        try: 
+            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=3)
+        except Exception: 
+            pass
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
     if tg_token and tg_chat_id:
-        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+        if tg_token.lower().startswith("bot"): 
+            tg_token = tg_token[3:]
         try:
             tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
-            payload = {"chat_id": tg_chat_id, "text": f"🦊 *KITSUNE PAGER:*\n{message}"}
-            requests.post(tg_url, json=payload, timeout=2)
-        except Exception: pass
-
+            payload = {
+                "chat_id": tg_chat_id, 
+                "text": f"🦊 *KITSUNE PAGER:*\n{message}",
+                "parse_mode": "Markdown"
+            }
+            res = requests.post(tg_url, json=payload, timeout=4)
+            if not res.ok:
+                st.toast(f"Telegram Alert Error: {res.json().get('description')}", icon="⚠️")
+        except Exception as e:
+            pass
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
     tg_token = get_secret_val("telegram_token")
