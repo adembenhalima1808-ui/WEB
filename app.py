@@ -155,7 +155,7 @@ def sync_telegram_replies():
                                 if "MESSAGE FROM" in orig_text:
                                     try:
                                         target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
-                                        target_company = target_company.replace("*", "").replace("🦊", "").strip()
+                                        target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").strip()
                                     except Exception: pass
                             
                             if target_company not in chat_data:
@@ -205,7 +205,7 @@ def log_chat(company, user_msg, bot_msg):
         os.replace(CHAT_LOGS_FILE + ".tmp", CHAT_LOGS_FILE)
     except Exception: pass
     
-    icon = "💖" if "sara" in clean_company.lower() else "🦊"
+    icon = "💖" if "sara" in clean_company.lower() or "wife" in clean_company.lower() else "🦊"
     send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
@@ -260,7 +260,6 @@ def extract_stack_from_resume(company_context):
 # --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
-    /* Nuke the Streamlit default header, footer, and watermark */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -327,7 +326,6 @@ st.markdown("""
     .pulse-dot-admin { display: inline-block; width: 10px; height: 10px; background-color: #FF0000; border-radius: 50%; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); animation: pulseAdmin 1.8s infinite; margin-right: 8px; }
     @keyframes pulseAdmin { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
 
-    /* Custom pink pulse animation specifically for Wife Mode */
     @keyframes pulseWife { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 20, 147, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0); } }
     .pulse-dot-wife { display: inline-block; width: 10px; height: 10px; background-color: #FF1493 !important; border-radius: 50%; animation: pulseWife 1.8s infinite; margin-right: 8px; }
 
@@ -459,7 +457,6 @@ if not st.session_state.app_initialized:
                 
                 if submit_wife_auth:
                     if "everything" in wife_answer.lower():
-                        # The answer is correct! Trigger the romantic login sequence
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
                         
@@ -473,6 +470,7 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
                                 
+                                # Webhook alert dispatched to Telegram
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
                                     send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
@@ -544,8 +542,9 @@ if not st.session_state.app_initialized:
                         time.sleep(1.5)
                         st.rerun()
                 
-                # Intercept "Wife" input and force the secondary authentication screen
                 elif company_input.strip().lower() == "wife":
+                    # Dispatches Telegram alert immediately when she enters "wife" at the gate
+                    send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
                     st.session_state.wife_auth_pending = True
                     st.rerun()
                     
@@ -609,7 +608,7 @@ with st.sidebar:
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-wife"></span>
-                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA </span>
+                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA ❤️</span>
                 </div>
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
             </div>
@@ -740,9 +739,9 @@ with tab_chat:
             current_hour = datetime.datetime.now().hour
             
             if st.session_state.get("is_wife_mode"):
-                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, Dashri"
+                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, sweetheart"
                 intro_text = (
-                    f"{greeting}. \n\n"
+                    f"{greeting}. ❤️\n\n"
                     "I am Adem's Kitsune agent, but right now, I am entirely dedicated to you. He built this private space just for you.\n\n"
                     "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
                 )
@@ -770,7 +769,6 @@ with tab_chat:
         chat_container = st.container(height=500, border=True)
         with chat_container:
             for message in st.session_state.messages:
-                # The Assistant always remains the fox, while the User changes to 👩‍💻 in Wife Mode
                 if message["role"] == "assistant":
                     avatar_icon = "🦊"
                 else:
@@ -791,7 +789,7 @@ with tab_chat:
             st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
             with chat_container:
-                bot_av = "🦊" # Kept as the fox for the agent's identity
+                bot_av = "🦊"
                 with st.chat_message("assistant", avatar=bot_av):
                     with st.spinner("Processing query..." if not st.session_state.get("is_wife_mode") else "Thinking of you..."):
                         time.sleep(0.6)
@@ -924,8 +922,7 @@ if is_human_comm_active:
             })
             save_live_chat(full_chat)
             
-            # Send webhook notification to telegram
-            heart_icon = "💖 " if "sara" in current_company_session.lower() else ""
+            heart_icon = "💖 " if "sara" in current_company_session.lower() or "wife" in current_company_session.lower() else ""
             send_webhook_alert(f"MESSAGE FROM {heart_icon}{current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
         
         configured_rate = app_config.get("refresh_rate", 5)
@@ -968,11 +965,19 @@ if st.session_state.is_admin:
             else: st.write("No specific company queries logged yet.")
 
             st.markdown("---")
-            st.markdown("#### Live Chat Wiretap Logs (AI Bot)")
+            
+            # Header with Wiretap refresh button
+            col_wire1, col_wire2 = st.columns([3, 1])
+            with col_wire1:
+                st.markdown("#### Live Chat Wiretap Logs (AI Bot)")
+            with col_wire2:
+                if st.button("🔄 Refresh Logs", use_container_width=True):
+                    st.cache_data.clear()
+                    st.rerun()
+
             chat_history = load_chat_logs()
             
             if chat_history:
-                # Group the logs by Target Company
                 grouped_logs = {}
                 for log in reversed(chat_history):
                     comp = log.get("company", "Unknown Entity")
@@ -980,16 +985,17 @@ if st.session_state.is_admin:
                         grouped_logs[comp] = []
                     grouped_logs[comp].append(log)
                 
-                # Display grouped logs inside expanders to keep the page clean
                 for comp, logs in grouped_logs.items():
-                    with st.expander(f"Intercepted Comms: {comp} ({len(logs)} messages)"):
+                    expander_label = f"Intercepted Comms: 💖 {comp}" if "sara" in comp.lower() or "wife" in comp.lower() else f"Intercepted Comms: {comp}"
+                    with st.expander(f"{expander_label} ({len(logs)} messages)"):
                         log_container = st.container(height=350, border=False)
                         with log_container:
                             for log in logs:
+                                user_color = "#FF1493" if "sara" in comp.lower() or "wife" in comp.lower() else "#FF7A00"
                                 st.markdown(f"""
                                 <div style="background: #000; border: 1px solid #333; padding: 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #E4E4E7;">
                                     <div style="color: #A1A1AA; font-size: 0.75rem; margin-bottom: 6px;">{log['timestamp']}</div>
-                                    <div style="margin-bottom: 4px;"><span style="color: #FF7A00; font-weight: 600;">User:</span> {log['user']}</div>
+                                    <div style="margin-bottom: 4px;"><span style="color: {user_color}; font-weight: 600;">User:</span> {log['user']}</div>
                                     <div><span style="color: #A1A1AA; font-weight: 600;">Agent:</span> {log['bot']}</div>
                                 </div>
                                 """, unsafe_allow_html=True)
