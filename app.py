@@ -1,6 +1,7 @@
 import time
 import datetime
 import json
+import os
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -19,6 +20,39 @@ load_dotenv()
 
 # Set up page config
 st.set_page_config(page_title="AI Engineer | Cyber-Fox Architecture", layout="wide")
+
+# --- ANALYTICS ENGINE (MINI-DATABASE) ---
+ANALYTICS_FILE = "analytics.json"
+
+def load_analytics():
+    default_data = {"total_visits": 0, "companies_logged": [], "messages_sent": 0, "cover_letters_generated": 0, "cv_downloads": 0}
+    if not os.path.exists(ANALYTICS_FILE):
+        return default_data
+    try:
+        with open(ANALYTICS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return default_data
+
+def save_analytics(data):
+    try:
+        with open(ANALYTICS_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        pass
+
+def increment_metric(metric, value=None):
+    data = load_analytics()
+    if metric == "companies_logged" and value:
+        # Avoid duplicate company names and don't log the admin override
+        if value not in data["companies_logged"] and value.lower() != "sudo override":
+            data["companies_logged"].append(value)
+    else:
+        data[metric] += 1
+    save_analytics(data)
+
+def track_cv_download():
+    increment_metric("cv_downloads")
 
 # --- GENERATOR FOR TYPEWRITER EFFECT ---
 def stream_response(text):
@@ -217,6 +251,10 @@ st.markdown("""
     .pulse-dot { display: inline-block; width: 10px; height: 10px; background-color: #FF7A00; border-radius: 50%; box-shadow: 0 0 0 0 rgba(255, 122, 0, 0.7); animation: pulse 1.8s infinite; margin-right: 8px; }
     @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 122, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 122, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 122, 0, 0); } }
 
+    /* Admin Red Pulse Dot */
+    .pulse-dot-admin { display: inline-block; width: 10px; height: 10px; background-color: #FF0000; border-radius: 50%; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); animation: pulseAdmin 1.8s infinite; margin-right: 8px; }
+    @keyframes pulseAdmin { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
+
     /* --- THE REACTOR CORE ANIMATIONS --- */
     .reactor-icon { font-size: 7rem; text-align: center; display: block; margin-bottom: 10px; }
     .reactor-sleeping { filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1)); animation: reactorBreathe 3s infinite ease-in-out; }
@@ -230,15 +268,37 @@ st.markdown("""
     /* Green Success Text Animation */
     .text-green-glow { text-align: center; color: #00FF00 !important; font-weight: 600; text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.2); animation: successPulse 1s infinite alternate; }
     @keyframes successPulse { 0% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.4); } 100% { text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 30px rgba(0, 255, 0, 0.4); } }
+    
+    /* Red Admin Text Animation */
+    .text-red-glow { text-align: center; color: #FF0000 !important; font-weight: 700; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.6), 0 0 20px rgba(255, 0, 0, 0.3); animation: alertPulse 1s infinite alternate; }
+    @keyframes alertPulse { 0% { text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); } 100% { text-shadow: 0 0 20px rgba(255, 0, 0, 1), 0 0 30px rgba(255, 0, 0, 0.6); } }
+
+    /* Admin Metrics Styling */
+    .admin-metric-card { background-color: #1A0505 !important; border: 1px solid rgba(255, 0, 0, 0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 1rem; }
+    .admin-metric-value { color: #FF4444; font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600; }
+    .admin-metric-label { color: #A1A1AA; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .company-pill { display: inline-block; background: #000; border: 1px solid #FF7A00; color: #FF7A00; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; margin: 4px; box-shadow: 0 0 8px rgba(255, 122, 0, 0.1); }
     </style>
 """, unsafe_allow_html=True)
 
 # --- APP INITIALIZATION STATE (PERSISTENT VIA URL) ---
+if "visit_logged" not in st.session_state:
+    st.session_state.visit_logged = False
+
+# We read the URL directly to ensure admin/company state persists across page refreshes
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = (st.query_params.get("company") == "ROOT")
+
 if st.query_params.get("initialized") == "true":
     st.session_state.app_initialized = True
+    
     if "company_context" not in st.session_state:
         saved_company = st.query_params.get("company", "")
-        if saved_company:
+        
+        # If the URL proves they are admin, immediately restore their root powers
+        if st.session_state.is_admin:
+            st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
+        elif saved_company:
             st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else:
             st.session_state.company_context = "General public evaluation."
@@ -275,30 +335,52 @@ if not st.session_state.app_initialized:
             with col_b:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
-                st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF7A00; text-shadow: 0 0 10px rgba(255,122,0,0.5);'>Authentication Accepted</h2>", unsafe_allow_html=True)
                 
-                status_text = st.empty()
-                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Bypassing security protocols...</p>", unsafe_allow_html=True)
-                
-                if company_input.strip():
-                    try:
-                        headers = {"User-Agent": "Mozilla/5.0"}
-                        query = urllib.parse.quote(f"{company_input} company overview tech stack")
-                        url = f"https://html.duckduckgo.com/html/?q={query}"
-                        response = requests.get(url, headers=headers)
-                        soup = BeautifulSoup(response.text, "html.parser")
-                        snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
-                        st.session_state.company_context = f"Company Name: {company_input}\nBackground: {' '.join(snippets[:3])}"
-                    except Exception:
-                        st.session_state.company_context = f"Company Name: {company_input}\nBackground: Target locked."
+                # --- CHECK FOR ADMIN BACKDOOR ---
+                if company_input.strip() == "sudo override":
+                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF0000; text-shadow: 0 0 10px rgba(255,0,0,0.5);'>SECURITY OVERRIDE</h2>", unsafe_allow_html=True)
+                    status_text = st.empty()
+                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Bypassing primary firewall...</p>", unsafe_allow_html=True)
                     
-                    st.query_params["company"] = company_input.strip()
+                    st.session_state.is_admin = True
+                    st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
+                    st.query_params["company"] = "ROOT"
+                    
+                    time.sleep(0.5)
+                    status_text.markdown("<p class='text-red-glow'>ROOT ACCESS GRANTED. Booting Developer Console...</p>", unsafe_allow_html=True)
+                    time.sleep(1.8)
                 else:
-                    st.session_state.company_context = "General public evaluation."
-                
-                time.sleep(0.5) 
-                status_text.markdown("<p class='text-green-glow'>Neural Link Established. Booting Dashboard...</p>", unsafe_allow_html=True)
-                time.sleep(1.8)
+                    # --- NORMAL INITIALIZATION & ANALYTICS TRACKING ---
+                    if not st.session_state.visit_logged:
+                        increment_metric("total_visits")
+                        if company_input.strip():
+                            increment_metric("companies_logged", company_input.strip())
+                        st.session_state.visit_logged = True
+
+                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF7A00; text-shadow: 0 0 10px rgba(255,122,0,0.5);'>Authentication Accepted</h2>", unsafe_allow_html=True)
+                    
+                    status_text = st.empty()
+                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Bypassing security protocols...</p>", unsafe_allow_html=True)
+                    
+                    if company_input.strip():
+                        try:
+                            headers = {"User-Agent": "Mozilla/5.0"}
+                            query = urllib.parse.quote(f"{company_input} company overview tech stack")
+                            url = f"https://html.duckduckgo.com/html/?q={query}"
+                            response = requests.get(url, headers=headers)
+                            soup = BeautifulSoup(response.text, "html.parser")
+                            snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
+                            st.session_state.company_context = f"Company Name: {company_input}\nBackground: {' '.join(snippets[:3])}"
+                        except Exception:
+                            st.session_state.company_context = f"Company Name: {company_input}\nBackground: Target locked."
+                        
+                        st.query_params["company"] = company_input.strip()
+                    else:
+                        st.session_state.company_context = "General public evaluation."
+                    
+                    time.sleep(0.5) 
+                    status_text.markdown("<p class='text-green-glow'>Neural Link Established. Booting Dashboard...</p>", unsafe_allow_html=True)
+                    time.sleep(1.8)
             
         st.query_params["initialized"] = "true"
         st.session_state.app_initialized = True
@@ -311,15 +393,28 @@ with st.sidebar:
     st.markdown("## Adem Ben Halima")
     st.caption("AI & Machine Learning Engineer")
     
-    st.markdown("""
-        <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #000000; border-radius: 4px; border: 1px solid #271A12;">
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span class="pulse-dot"></span>
-                <span style="font-size: 0.9rem; color: #F8FAFC; font-weight: 600;">Open to Opportunities</span>
+    # Normal User Badge
+    if not st.session_state.is_admin:
+        st.markdown("""
+            <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #000000; border-radius: 4px; border: 1px solid #271A12;">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span class="pulse-dot"></span>
+                    <span style="font-size: 0.9rem; color: #F8FAFC; font-weight: 600;">Open to Opportunities</span>
+                </div>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Cergy, Île-de-France</span>
             </div>
-            <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Cergy, Île-de-France</span>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    # Admin Badge
+    else:
+        st.markdown("""
+            <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A0505; border-radius: 4px; border: 1px solid #330A0A;">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span class="pulse-dot-admin"></span>
+                    <span style="font-size: 0.9rem; color: #FF4444; font-weight: 600;">ROOT ACCESS ACTIVE</span>
+                </div>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Terminal Override</span>
+            </div>
+        """, unsafe_allow_html=True)
     
     try:
         with open("resume.pdf", "rb") as pdf_file:
@@ -329,7 +424,8 @@ with st.sidebar:
             data=pdf_bytes,
             file_name="Adem_Ben_Halima_CV.pdf",
             mime="application/pdf",
-            use_container_width=True
+            use_container_width=True,
+            on_click=track_cv_download
         )
     except FileNotFoundError:
         st.error("resume.pdf not found in root directory.")
@@ -358,6 +454,19 @@ with st.sidebar:
             </a>
         </div>
     """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # --- EXIT / LOGOUT BUTTON ---
+    if st.button("Terminate Connection", use_container_width=True):
+        st.session_state.app_initialized = False
+        st.session_state.is_admin = False
+        st.session_state.company_context = "General public evaluation."
+        st.session_state.agentic_memory = ""
+        if "messages" in st.session_state:
+            del st.session_state["messages"]
+        st.query_params.clear()
+        st.rerun()
 
 # --- HERO SECTION ---
 st.markdown("# Cyber-Kitsune Architecture")
@@ -404,9 +513,14 @@ st.plotly_chart(fig, use_container_width=True, config={'staticPlot': True})
 st.divider()
 
 # =====================================================================
-# --- HOLOGRAPHIC TABS: CHAT & AGENTIC OPERATIONS ---
+# --- HOLOGRAPHIC TABS: CHAT, AGENTIC, & ADMIN ---
 # =====================================================================
-tab_chat, tab_agent = st.tabs(["Direct Interrogation", "Agentic Operations"])
+
+# Conditionally render tabs based on Admin state
+if st.session_state.is_admin:
+    tab_chat, tab_agent, tab_admin = st.tabs(["Direct Interrogation", "Agentic Operations", "Developer Options [ROOT]"])
+else:
+    tab_chat, tab_agent = st.tabs(["Direct Interrogation", "Agentic Operations"])
 
 with tab_chat:
     st.markdown("### Direct Interrogation Interface")
@@ -469,6 +583,10 @@ with tab_chat:
         prompt_to_process = user_input or selected_prompt
 
         if prompt_to_process:
+            # Analytics Trigger: Log the message
+            if not st.session_state.is_admin:
+                increment_metric("messages_sent")
+                
             with chat_container:
                 with st.chat_message("user", avatar="🧑‍💻"):
                     st.markdown(prompt_to_process)
@@ -550,6 +668,10 @@ with tab_agent:
         st.warning("Please paste a Job Description first.")
     
     elif agent_action and jd_input.strip():
+        # Analytics Trigger: Log Cover Letter Generation
+        if agent_action == "Cover Letter Generation" and not st.session_state.is_admin:
+            increment_metric("cover_letters_generated")
+
         with st.spinner(f"Kitsune executing agentic protocol: {agent_action}..."):
             try:
                 resume_content = get_resume_text()
@@ -604,7 +726,6 @@ with tab_agent:
                     doc = SimpleDocTemplate(buffer, pagesize=letter)
                     styles = getSampleStyleSheet()
                     
-                    # Convert markdown linebreaks to HTML linebreaks for ReportLab
                     flowables = [Paragraph(p.replace('\n', '<br />'), styles['Normal']) for p in agent_response.content.split('\n\n') if p.strip()]
                     doc.build(flowables)
                     pdf_bytes = buffer.getvalue()
@@ -618,11 +739,42 @@ with tab_agent:
                     )
                 except ImportError:
                     st.info("💡 To enable PDF downloads, please run `pip install reportlab` and restart the app.")
-                    # Fallback to standard Text download if Reportlab is missing
                     st.download_button(
-                        label="Download Cover Letter (TXT)",
+                        label="📥 Download Cover Letter (TXT)",
                         data=agent_response.content,
                         file_name="Cover_Letter_Adem_Ben_Halima.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
+
+# --- DEVELOPER CONSOLE (ADMIN ONLY) ---
+if st.session_state.is_admin:
+    with tab_admin:
+        st.markdown("### 🔴 System Telemetry Dashboard")
+        st.write("Live metrics logged by the Cyber-Kitsune architecture.")
+        
+        # Load the latest numbers from the JSON file
+        analytics_data = load_analytics()
+        
+        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+        
+        with col_t1:
+            st.markdown(f'<div class="admin-metric-card"><div class="admin-metric-label">Total Visits</div><div class="admin-metric-value">{analytics_data["total_visits"]}</div></div>', unsafe_allow_html=True)
+        with col_t2:
+            st.markdown(f'<div class="admin-metric-card"><div class="admin-metric-label">Bot Interactions</div><div class="admin-metric-value">{analytics_data["messages_sent"]}</div></div>', unsafe_allow_html=True)
+        with col_t3:
+            st.markdown(f'<div class="admin-metric-card"><div class="admin-metric-label">CVs Downloaded</div><div class="admin-metric-value">{analytics_data["cv_downloads"]}</div></div>', unsafe_allow_html=True)
+        with col_t4:
+            st.markdown(f'<div class="admin-metric-card"><div class="admin-metric-label">Cover Letters</div><div class="admin-metric-value">{analytics_data["cover_letters_generated"]}</div></div>', unsafe_allow_html=True)
+
+        st.markdown("#### 🏢 Scanned Corporate Entities")
+        if analytics_data["companies_logged"]:
+            pills_html = "".join([f"<span class='company-pill'>{comp}</span>" for comp in analytics_data["companies_logged"]])
+            st.markdown(pills_html, unsafe_allow_html=True)
+        else:
+            st.write("No specific company queries logged yet.")
+
+        st.markdown("---")
+        if st.button("Force Clear System Cache", type="primary"):
+            st.cache_data.clear()
+            st.success("Application memory cache cleared.")
