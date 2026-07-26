@@ -14,3 +14,5 @@ reportlab
 chromadb
 sentence-transformers
 tiktoken
+torch
+torchvision
