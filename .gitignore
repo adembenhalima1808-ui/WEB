@@ -1,3 +1,18 @@
-venv/
+# Security & Environment Variables
 .env
+
+# Dynamic Database Files (Let the live server generate its own)
 analytics.json
+config.json
+chat_logs.json
+live_chat.json
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# OS Files
+.DS_Store
