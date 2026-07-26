@@ -94,15 +94,17 @@ app_config = load_config()
 
 # Helper to fetch keys safely from config.json, st.secrets, or environment variables
 def get_secret_val(key_name, default=""):
-    val = app_config.get(key_name, "").strip()
-    if val:
-        return val
+    val = app_config.get(key_name.lower(), "").strip()
+    if val: return val
     try:
         if key_name.upper() in st.secrets:
             return str(st.secrets[key_name.upper()]).strip()
-    except Exception:
-        pass
+    except Exception: pass
     return os.getenv(key_name.upper(), default)
+
+# Strict heavy key fetcher
+def get_heavy_model_key():
+    return get_secret_val("MISTRAL_MEDIUM_KEY")
 
 # --- NEURAL PAGER (WEBHOOK SYSTEM) ---
 def send_webhook_alert(message):
@@ -121,14 +123,13 @@ def send_webhook_alert(message):
             requests.post(tg_url, json=payload, timeout=2)
         except Exception: pass
 
-# --- TELEGRAM 2-WAY SYNC ENGINE (RACE CONDITION FIXED) ---
+# --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
     if not tg_token or not tg_chat_id: return
     if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
     
-    # FORCE fresh read to prevent stale memory looping
     fresh_config = load_config()
     last_update_id = fresh_config.get("telegram_last_update_id", 0)
     
@@ -174,7 +175,6 @@ def sync_telegram_replies():
                 save_live_chat(chat_data)
                 fresh_config["telegram_last_update_id"] = last_update_id
                 save_config(fresh_config)
-                # Sync global memory immediately
                 app_config["telegram_last_update_id"] = last_update_id
     except Exception: pass
 
@@ -230,8 +230,11 @@ def get_resume_text():
 @st.cache_data(show_spinner=False)
 def extract_skills_from_resume(company_context):
     try:
+        api_key = get_heavy_model_key()
+        if not api_key: raise ValueError("Missing MISTRAL_MEDIUM_KEY")
         resume_text = get_resume_text()
-        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1)
+        # Explicitly using the medium model with the medium key
+        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1, mistral_api_key=api_key)
         prompt = (f"Analyze this resume text: {resume_text}\n\nTarget Company Context: {company_context}\n\nExtract the 6 most prominent, broad engineering competencies (e.g., 'Data Engineering', 'Machine Learning', 'DevOps'). If a Target Company Context is provided, prioritize the competencies from the resume that best align with that company's focus. Assign a realistic proficiency score out of 100 for each based on the depth of experience shown. Respond ONLY with a valid JSON object in this exact format, with no markdown blocks, no intro, and no extra text:\n" + '{"categories": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6"], "scores": [95, 90, 85, 80, 85, 90]}')
         response = llm.invoke([HumanMessage(content=prompt)])
         content = response.content.replace('```json', '').replace('```', '').strip()
@@ -242,8 +245,11 @@ def extract_skills_from_resume(company_context):
 @st.cache_data(show_spinner=False)
 def extract_stack_from_resume(company_context):
     try:
+        api_key = get_heavy_model_key()
+        if not api_key: raise ValueError("Missing MISTRAL_MEDIUM_KEY")
         resume_text = get_resume_text()
-        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1)
+        # Explicitly using the medium model with the medium key
+        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1, mistral_api_key=api_key)
         prompt = (f"Analyze this resume text: {resume_text}\n\nTarget Company Context: {company_context}\n\nExtract exactly 5 specific technologies, frameworks, or tools from the resume. If a Target Company Context is provided, prioritize the tools from the resume that best align with that company's likely tech stack. Keep the names short and professional (e.g., 'Python 3.11', 'Docker', 'AWS'). Respond ONLY with a valid JSON array of strings, with no markdown blocks, no intro, and no extra text:\n" + '["Tech1", "Tech2", "Tech3", "Tech4", "Tech5"]')
         response = llm.invoke([HumanMessage(content=prompt)])
         content = response.content.replace('```json', '').replace('```', '').strip()
@@ -382,10 +388,9 @@ if st.query_params.get("initialized") == "true":
             
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
-# Bulletproofing messages initialization
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- THE CYBER-GATE LOCK SCREEN WITH 2FA ---
+# --- THE CYBER-GATE LOCK SCREEN WITH SMART 2FA BYPASS ---
 if not st.session_state.app_initialized:
     st.markdown("""<style>[data-testid="stSidebar"] { display: none !important; }</style>""", unsafe_allow_html=True)
     gate_placeholder = st.empty()
@@ -397,10 +402,10 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='reactor-icon reactor-waking'>🔐</span>", unsafe_allow_html=True)
                 st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-bottom: 5px;'>AUTHORIZATION REQUIRED</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>A 6-digit cryptographic key has been sent to the Neural Pager.</p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Enter 6-digit code sent to Telegram or use Emergency Passcode `999999`.</p>", unsafe_allow_html=True)
                 
                 with st.form("otp_form", clear_on_submit=True):
-                    otp_input = st.text_input("Enter 6-Digit Code", max_chars=6, type="password", label_visibility="collapsed")
+                    otp_input = st.text_input("Enter Code", max_chars=6, type="password", label_visibility="collapsed")
                     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1: submit_otp = st.form_submit_button("Verify Access", use_container_width=True)
@@ -450,17 +455,31 @@ if not st.session_state.app_initialized:
                     st.rerun()
 
                 if company_input.strip() == "sudo override":
-                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF0000; text-shadow: 0 0 10px rgba(255,0,0,0.5);'>2FA PROTOCOL INITIATED</h2>", unsafe_allow_html=True)
-                    status_text = st.empty()
-                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Transmitting cryptographic key to secure pager...</p>", unsafe_allow_html=True)
+                    tg_token = get_secret_val("telegram_token")
                     
-                    auth_code = str(random.randint(100000, 999999))
-                    st.session_state.admin_2fa_code = auth_code
-                    st.session_state.admin_2fa_pending = True
-                    send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`\n\n_Emergency Bypass Code: 999999_")
-                    
-                    time.sleep(1.5)
-                    st.rerun()
+                    if not tg_token:
+                        st.markdown("<h2 class='text-green-glow' style='text-align: center; margin-bottom: 5px;'>FIRST-TIME ROOT INITIALIZATION</h2>", unsafe_allow_html=True)
+                        st.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>No Telegram webhook found. Auto-bypassing 2FA gate...</p>", unsafe_allow_html=True)
+                        st.session_state.is_admin = True
+                        st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
+                        st.query_params["company"] = "ROOT"
+                        st.query_params["initialized"] = "true"
+                        st.session_state.session_start_time = time.time()
+                        st.session_state.app_initialized = True
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF0000; text-shadow: 0 0 10px rgba(255,0,0,0.5);'>2FA PROTOCOL INITIATED</h2>", unsafe_allow_html=True)
+                        status_text = st.empty()
+                        status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Transmitting cryptographic key to secure pager...</p>", unsafe_allow_html=True)
+                        
+                        auth_code = str(random.randint(100000, 999999))
+                        st.session_state.admin_2fa_code = auth_code
+                        st.session_state.admin_2fa_pending = True
+                        send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`\n\n_Emergency Bypass Code: 999999_")
+                        
+                        time.sleep(1.5)
+                        st.rerun()
                 else:
                     if not st.session_state.visit_logged:
                         increment_metric("total_visits")
@@ -700,15 +719,16 @@ with tab_chat:
 
             if selected_prompt in st.session_state.quick_prompts:
                 try:
+                    # Uses Standard API Key for simple fast suggestions
                     api_key = get_secret_val("MISTRAL_API_KEY")
-                    llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=api_key)
-                    followup_instruction = f"Based on the exchange, suggest exactly 1 short follow-up question the recruiter should ask next. Keep it under 8 words.\n\nRecruiter: {prompt_to_process}\nCandidate: {bot_reply}"
-                    new_suggestion = llm_fast.invoke([HumanMessage(content=followup_instruction)]).content.strip().strip('"')
-                    if new_suggestion:
-                        clicked_index = st.session_state.quick_prompts.index(selected_prompt)
-                        st.session_state.quick_prompts[clicked_index] = new_suggestion
+                    if api_key:
+                        llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=api_key)
+                        followup_instruction = f"Based on the exchange, suggest exactly 1 short follow-up question the recruiter should ask next. Keep it under 8 words.\n\nRecruiter: {prompt_to_process}\nCandidate: {bot_reply}"
+                        new_suggestion = llm_fast.invoke([HumanMessage(content=followup_instruction)]).content.strip().strip('"')
+                        if new_suggestion:
+                            clicked_index = st.session_state.quick_prompts.index(selected_prompt)
+                            st.session_state.quick_prompts[clicked_index] = new_suggestion
                 except Exception: pass 
-                # PROPER INDENTATION: Only rerun if a quick prompt button was pressed
                 st.rerun()
 
 with tab_agent:
@@ -731,7 +751,9 @@ with tab_agent:
 
         with st.spinner(f"Executing agentic protocol: {agent_action}..."):
             try:
-                api_key = get_secret_val("MISTRAL_API_KEY")
+                # Uses Heavy Medium Key
+                api_key = get_heavy_model_key()
+                if not api_key: raise ValueError("MISTRAL_MEDIUM_KEY is not configured yet. Go to Developer Options to set it.")
                 resume_content = get_resume_text()
                 llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
                 
@@ -773,7 +795,7 @@ with tab_agent:
                     st.info("💡 To enable PDF downloads, please run `pip install reportlab` and restart the app.")
                     st.download_button(label="Download Cover Letter (TXT)", data=agent_response.content, file_name="Cover_Letter_Adem_Ben_Halima.txt", mime="text/plain", use_container_width=True)
 
-# --- HUMAN COMM-LINK TAB (INPUT-FIRST ROUTING & SESSION ISOLATION) ---
+# --- HUMAN COMM-LINK TAB ---
 if is_human_comm_active:
     with tab_human:
         st.markdown("### Direct Comm-Link")

@@ -11,7 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 @st.cache_resource(show_spinner=False)
 def initialize_rag_system():
     try:
-        # Securely fetch API key
+        # Strictly fetch the Standard API Key for RAG
         api_key = os.getenv("MISTRAL_API_KEY", "")
         if not api_key and "MISTRAL_API_KEY" in st.secrets:
             api_key = st.secrets["MISTRAL_API_KEY"]
@@ -19,9 +19,9 @@ def initialize_rag_system():
         if not api_key:
             return "Initialization Failed: Missing MISTRAL_API_KEY."
 
-        # Initialize Embeddings and LLM
+        # Initialize Embeddings and LLM on the SMALL model
         embeddings = MistralAIEmbeddings(model="mistral-embed", mistral_api_key=api_key)
-        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
+        llm = ChatMistralAI(model="mistral-small-latest", temperature=0.3, mistral_api_key=api_key)
 
         # Fallback if brain file is missing
         if not os.path.exists("my_brain.txt"):
@@ -51,7 +51,7 @@ def initialize_rag_system():
             ("human", "{input}"),
         ])
 
-        # Build Retrieval Chains via langchain-classic
+        # Build Retrieval Chains
         question_answer_chain = create_stuff_documents_chain(llm, prompt)
         rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
