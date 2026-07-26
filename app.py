@@ -257,7 +257,6 @@ def extract_stack_from_resume(company_context):
 # --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
-
     /* Nuke the Streamlit default header, footer, and watermark */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -414,7 +413,6 @@ if not st.session_state.app_initialized:
                     with col_btn2: cancel_otp = st.form_submit_button("Abort", use_container_width=True)
                 
                 if submit_otp:
-                    # STRICT MATCH: Only accepts the actual code dispatched to Telegram
                     if st.session_state.admin_2fa_code and otp_input.strip() == st.session_state.admin_2fa_code:
                         st.session_state.admin_2fa_pending = False
                         st.session_state.admin_2fa_code = ""
@@ -859,9 +857,29 @@ if st.session_state.is_admin:
             st.markdown("---")
             st.markdown("#### Live Chat Wiretap Logs (AI Bot)")
             chat_history = load_chat_logs()
+            
             if chat_history:
+                # Group the logs by Target Company
+                grouped_logs = {}
                 for log in reversed(chat_history):
-                    st.markdown(f"<div class='log-box'><strong>[{log['timestamp']}] Target: {log['company']}</strong><br><span style='color:#FF7A00;'>User:</span> {log['user']}<br><span style='color:#A1A1AA;'>Bot:</span> {log['bot'][:150]}...</div>", unsafe_allow_html=True)
+                    comp = log.get("company", "Unknown Entity")
+                    if comp not in grouped_logs:
+                        grouped_logs[comp] = []
+                    grouped_logs[comp].append(log)
+                
+                # Display grouped logs inside expanders to keep the page clean
+                for comp, logs in grouped_logs.items():
+                    with st.expander(f"Intercepted Comms: {comp} ({len(logs)} messages)"):
+                        log_container = st.container(height=350, border=False)
+                        with log_container:
+                            for log in logs:
+                                st.markdown(f"""
+                                <div style="background: #000; border: 1px solid #333; padding: 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #E4E4E7;">
+                                    <div style="color: #A1A1AA; font-size: 0.75rem; margin-bottom: 6px;">{log['timestamp']}</div>
+                                    <div style="margin-bottom: 4px;"><span style="color: #FF7A00; font-weight: 600;">User:</span> {log['user']}</div>
+                                    <div><span style="color: #A1A1AA; font-weight: 600;">Agent:</span> {log['bot']}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
             else:
                 st.write("No conversations intercepted yet.")
 
