@@ -264,7 +264,6 @@ def extract_stack_from_resume(company_context):
 # --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
-    /* Nuke the Streamlit default header, footer, and watermark */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -511,7 +510,7 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
                 st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 10px rgba(138,43,226,0.5);'>Vibe Check Required</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling-in-law is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
                 
                 with st.form("egi_auth_form", clear_on_submit=True):
                     egi_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
@@ -659,9 +658,9 @@ if not st.session_state.app_initialized:
 # --- SIDEBAR CONTENT ---
 with st.sidebar:
     st.markdown("## Adem Ben Halima")
-    st.caption(app_config.get("sidebar_subtitle", "AI & Machine Learning Engineer"))
     
     if st.session_state.is_admin:
+        st.caption(app_config.get("sidebar_subtitle", "AI & Machine Learning Engineer"))
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A0505; border-radius: 6px; border: 1px solid rgba(255, 0, 0, 0.4); box-shadow: 0 0 15px rgba(255, 0, 0, 0.2), inset 0 0 10px rgba(255, 0, 0, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
@@ -672,6 +671,7 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
     elif st.session_state.get("is_wife_mode"):
+        st.caption("Best Husband in the World")
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
@@ -682,16 +682,18 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
     elif st.session_state.get("is_egi_mode"):
+        st.caption("The Favorite Child")
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #10051A; border-radius: 6px; border: 1px solid rgba(138, 43, 226, 0.4); box-shadow: 0 0 15px rgba(138, 43, 226, 0.2), inset 0 0 10px rgba(138, 43, 226, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-egi"></span>
                     <span style="font-size: 0.9rem; color: #8A2BE2; font-weight: 600; text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);">EGI DETECTED 😈</span>
                 </div>
-                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 In Adem's shadow</span>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Far superior to you</span>
             </div>
         """, unsafe_allow_html=True)
     else:
+        st.caption(app_config.get("sidebar_subtitle", "AI & Machine Learning Engineer"))
         st.markdown(f"""
             <div class="status-container-glow">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
@@ -702,21 +704,23 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
     
-    try:
-        with open("resume.pdf", "rb") as pdf_file: pdf_bytes = pdf_file.read()
-        st.download_button(label="Download Full CV", data=pdf_bytes, file_name="Adem_Ben_Halima_CV.pdf", mime="application/pdf", use_container_width=True, on_click=track_cv_download)
-    except Exception: st.error("resume.pdf not found in root directory.")
-    
-    st.divider()
-    st.markdown("### System Stack")
-    
-    with st.spinner("Aligning stack to target..."):
-        current_context = st.session_state.get("company_context", "General public evaluation.")
-        dynamic_stack = extract_stack_from_resume(current_context)
-    
-    st.markdown("".join([f"<span class='badge'>{tech}</span>" for tech in dynamic_stack]), unsafe_allow_html=True)
-    
-    st.divider()
+    # Hide professional CV and Tech Stack from Family Modes
+    if not (st.session_state.get("is_wife_mode") or st.session_state.get("is_egi_mode")):
+        try:
+            with open("resume.pdf", "rb") as pdf_file: pdf_bytes = pdf_file.read()
+            st.download_button(label="Download Full CV", data=pdf_bytes, file_name="Adem_Ben_Halima_CV.pdf", mime="application/pdf", use_container_width=True, on_click=track_cv_download)
+        except Exception: st.error("resume.pdf not found in root directory.")
+        
+        st.divider()
+        st.markdown("### System Stack")
+        with st.spinner("Aligning stack to target..."):
+            current_context = st.session_state.get("company_context", "General public evaluation.")
+            dynamic_stack = extract_stack_from_resume(current_context)
+        st.markdown("".join([f"<span class='badge'>{tech}</span>" for tech in dynamic_stack]), unsafe_allow_html=True)
+        st.divider()
+    else:
+        st.divider()
+
     st.markdown("### Comm Links")
     st.markdown("""
         <div style="display: flex; gap: 10px;">
@@ -757,23 +761,49 @@ with st.sidebar:
         st.query_params.clear()
         st.rerun()
 
-# --- HERO SECTION ---
-st.markdown(f"# {app_config.get('title', 'Cyber-Kitsune Architecture')}")
-st.markdown(f"**Role:** {app_config.get('role_title', 'End-to-End AI & Machine Learning Engineer')} | **Location:** {app_config.get('location', 'Cergy, Île-de-France')}")
-st.write(app_config.get('intro_text', 'Welcome to my digital den.'))
+# --- HERO SECTION & CUSTOM RADAR CHARTS ---
+if st.session_state.get("is_wife_mode"):
+    st.markdown(f"# Sara's Private Den ❤️")
+    st.markdown(f"**Role:** The Love of Adem's Life | **Location:** Always in his heart")
+    st.write("Welcome to your personal space, beautiful. Adem built this just to remind you how much you mean to him.")
+    
+    st.markdown("### Sara's Perfection Matrix")
+    categories_closed = ['Unconditional Love', 'Patience', 'Beauty', 'Making Adem Smile', 'Cuddles', 'Support', 'Unconditional Love']
+    skill_scores_closed = [100, 100, 100, 100, 100, 100, 100]
+    fillcolor = 'rgba(255, 20, 147, 0.2)'
+    linecolor = '#FF1493'
+    gridcol = 'rgba(255, 20, 147, 0.1)'
 
-# --- INTERACTIVE PLOTLY RADAR CHART ---
-st.markdown("### Core Engineering Competencies")
-with st.spinner("Agent extracting core competencies from CV..."):
-    current_context = st.session_state.get("company_context", "General public evaluation.")
-    categories, skill_scores = extract_skills_from_resume(current_context)
+elif st.session_state.get("is_egi_mode"):
+    st.markdown(f"# The Loser's Lounge 🤡")
+    st.markdown(f"**Role:** Second Favorite Child | **Location:** In Adem's Shadow")
+    st.write("Welcome to the roast room, Egi. Try not to cry.")
+    
+    st.markdown("### Egi's Flaw Radar")
+    categories_closed = ['Being Loud', 'Annoying Adem', 'Delusion', 'Sarcasm', 'Complaining', 'Actually Trying', 'Being Loud']
+    skill_scores_closed = [99, 100, 95, 85, 90, 10, 99]
+    fillcolor = 'rgba(138, 43, 226, 0.2)'
+    linecolor = '#8A2BE2'
+    gridcol = 'rgba(138, 43, 226, 0.1)'
 
-categories_closed = categories + [categories[0]]
-skill_scores_closed = skill_scores + [skill_scores[0]]
+else:
+    st.markdown(f"# {app_config.get('title', 'Cyber-Kitsune Architecture')}")
+    st.markdown(f"**Role:** {app_config.get('role_title', 'End-to-End AI & Machine Learning Engineer')} | **Location:** {app_config.get('location', 'Cergy, Île-de-France')}")
+    st.write(app_config.get('intro_text', 'Welcome to my digital den.'))
+
+    st.markdown("### Core Engineering Competencies")
+    with st.spinner("Agent extracting core competencies from CV..."):
+        current_context = st.session_state.get("company_context", "General public evaluation.")
+        categories, skill_scores = extract_skills_from_resume(current_context)
+    categories_closed = categories + [categories[0]]
+    skill_scores_closed = skill_scores + [skill_scores[0]]
+    fillcolor = 'rgba(255, 122, 0, 0.2)'
+    linecolor = '#FF7A00'
+    gridcol = 'rgba(255,255,255,0.05)'
 
 fig = go.Figure()
-fig.add_trace(go.Scatterpolar(r=skill_scores_closed, theta=categories_closed, fill='toself', fillcolor='rgba(255, 122, 0, 0.2)', line=dict(color='#FF7A00', width=2), name='Skill Level', hoverinfo='none'))
-fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], gridcolor='rgba(255,255,255,0.05)', showticklabels=False), angularaxis=dict(gridcolor='rgba(255,255,255,0.05)', tickfont=dict(color="#A1A1AA", size=12)), bgcolor='#000000'), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, margin=dict(l=60, r=60, t=30, b=30), dragmode=False)
+fig.add_trace(go.Scatterpolar(r=skill_scores_closed, theta=categories_closed, fill='toself', fillcolor=fillcolor, line=dict(color=linecolor, width=2), name='Score', hoverinfo='none'))
+fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], gridcolor=gridcol, showticklabels=False), angularaxis=dict(gridcolor=gridcol, tickfont=dict(color="#A1A1AA", size=12)), bgcolor='#000000'), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, margin=dict(l=60, r=60, t=30, b=30), dragmode=False)
 st.plotly_chart(fig, use_container_width=True, config={'staticPlot': True})
 st.divider()
 
@@ -785,6 +815,10 @@ if st.session_state.is_admin:
         tab_chat, tab_agent, tab_human, tab_admin = st.tabs(["Direct Interrogation", "Agentic Operations", "Direct Comm-Link", "Developer Options [ROOT]"])
     else:
         tab_chat, tab_agent, tab_admin = st.tabs(["Direct Interrogation", "Agentic Operations", "Developer Options [ROOT]"])
+elif st.session_state.get("is_wife_mode"):
+    tab_chat, tab_agent, tab_human = st.tabs(["Talk to Me ❤️", "Love Generator ✨", "Direct Comm-Link 📱"])
+elif st.session_state.get("is_egi_mode"):
+    tab_chat, tab_agent, tab_human = st.tabs(["Roast Session 🤡", "Reality Check 📉", "Direct Comm-Link 📱"])
 else: 
     if is_human_comm_active:
         tab_chat, tab_agent, tab_human = st.tabs(["Direct Interrogation", "Agentic Operations", "Direct Comm-Link"])
@@ -792,7 +826,13 @@ else:
         tab_chat, tab_agent = st.tabs(["Direct Interrogation", "Agentic Operations"])
 
 with tab_chat:
-    st.markdown("### Direct Interrogation Interface")
+    if st.session_state.get("is_wife_mode"):
+        st.markdown("### Sweet Interrogation Interface")
+    elif st.session_state.get("is_egi_mode"):
+        st.markdown("### The Roast Box")
+    else:
+        st.markdown("### Direct Interrogation Interface")
+        
     if "quick_prompts" not in st.session_state:
         if st.session_state.get("is_wife_mode"):
             st.session_state.quick_prompts = ["Do you miss me?", "What do you love most about me?", "Tell me a sweet story."]
@@ -927,67 +967,124 @@ with tab_chat:
                 st.rerun()
 
 with tab_agent:
-    st.markdown("### Agentic Operations")
-    st.write("Inject a Job Description below to run autonomous candidate evaluations. The Agent will use Mistral AI to map core competencies directly to your requirements.")
-    
-    jd_input = st.text_area("Target Job Description", placeholder="Paste the full job description here...", height=200)
-    col_act1, col_act2, col_act3 = st.columns(3)
-    agent_action = None
-    with col_act1:
-        if st.button("Calculate Fit Score", use_container_width=True): agent_action = "Fit Score Analysis"
-    with col_act2:
-        if st.button("Draft Cover Letter", use_container_width=True): agent_action = "Cover Letter Generation"
-    with col_act3:
-        if st.button("Extract Interview Qs", use_container_width=True): agent_action = "Interview Question Extraction"
-
-    if agent_action and not jd_input.strip(): st.warning("Please paste a Job Description first.")
-    elif agent_action and jd_input.strip():
-        if agent_action == "Cover Letter Generation" and not st.session_state.is_admin: increment_metric("cover_letters_generated")
-
-        with st.spinner(f"Executing agentic protocol: {agent_action}..."):
-            try:
-                api_key = get_heavy_model_key()
-                if not api_key: raise ValueError("MISTRAL_MEDIUM_KEY is missing from Streamlit Secrets or environment.")
-                resume_content = get_resume_text()
-                llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
-                
-                if agent_action == "Fit Score Analysis":
-                    task_prompt = f"Act as an expert technical recruiter. Compare this candidate's resume to the provided Job Description. Give a definitive 'Fit Score' out of 100. Then provide 3 bullet points on 'Strongest Alignments' and 2 bullet points on 'Potential Gaps/Growth Areas'. Keep it concise and professional.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
-                elif agent_action == "Cover Letter Generation":
-                    current_date = datetime.datetime.now().strftime("%B %d, %Y")
-                    task_prompt = f"Write a highly tailored, compelling, and technical cover letter for Adem Ben Halima based on the Job Description below.\n\nCRITICAL INSTRUCTIONS:\n- Include today's date ({current_date}) at the top.\n- Extract Adem's contact info from the resume and include it in the header.\n- Address the letter specifically to 'Hiring Manager'.\n- Keep the tone confident, professional, and slightly futuristic. Limit to 3 paragraphs.\n- OUTPUT ONLY THE COVER LETTER. Do NOT add any intro text, conversational filler (e.g., 'Here is the cover letter'), or closing remarks outside the letter itself. Start directly with the date/header and end with the signature.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
-                elif agent_action == "Interview Question Extraction":
-                    task_prompt = f"Based on the intersection of this candidate's resume and the Job Description, generate the 4 most critical technical interview questions the hiring manager should ask them to validate their fit. Provide a brief note on what a good answer from the candidate would look like.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
-
-                agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
-                st.session_state.messages.append({"role": "user", "content": f"System Command Executed: {agent_action} based on the provided Job Description."})
-                st.session_state.messages.append({"role": "assistant", "content": agent_response.content})
-                st.session_state.agentic_memory += f"\n\n--- RECENT SYSTEM OPERATION: {agent_action} ---\n{agent_response.content}\n\n"
-            except Exception as e:
-                st.error(f"Execution Error: {e}")
-                agent_response = None
+    if st.session_state.get("is_wife_mode"):
+        st.markdown("### Love Generator ✨")
+        st.write("Click a button below to make the AI generate something sweet just for you.")
         
-        if agent_response:
-            st.markdown(f"#### {agent_action} Output:")
-            output_container = st.container(border=True)
-            with output_container: st.write_stream(stream_response(agent_response.content))
+        col_w1, col_w2 = st.columns(2)
+        wife_action = None
+        with col_w1:
+            if st.button("Write Sara a Poem 🌹", use_container_width=True): wife_action = "Poem"
+        with col_w2:
+            if st.button("Why Adem Loves Sara 💌", use_container_width=True): wife_action = "Reasons"
             
-            if agent_action == "Cover Letter Generation":
+        if wife_action:
+            with st.spinner("Writing from the heart..."):
                 try:
-                    from reportlab.lib.pagesizes import letter
-                    from reportlab.platypus import SimpleDocTemplate, Paragraph
-                    from reportlab.lib.styles import getSampleStyleSheet
-                    import io
-                    buffer = io.BytesIO()
-                    doc = SimpleDocTemplate(buffer, pagesize=letter)
-                    styles = getSampleStyleSheet()
-                    flowables = [Paragraph(p.replace('\n', '<br />'), styles['Normal']) for p in agent_response.content.split('\n\n') if p.strip()]
-                    doc.build(flowables)
-                    pdf_bytes = buffer.getvalue()
-                    st.download_button(label="Download Cover Letter (PDF)", data=pdf_bytes, file_name="Cover_Letter_Adem_Ben_Halima.pdf", mime="application/pdf", use_container_width=True)
-                except ImportError:
-                    st.info("💡 To enable PDF downloads, please run `pip install reportlab` and restart the app.")
-                    st.download_button(label="Download Cover Letter (TXT)", data=agent_response.content, file_name="Cover_Letter_Adem_Ben_Halima.txt", mime="text/plain", use_container_width=True)
+                    api_key = get_heavy_model_key()
+                    llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
+                    if wife_action == "Poem":
+                        task_prompt = "Write a short, beautiful, and romantic 4-stanza poem from Adem to his wife Sara. Mention that she is his everything."
+                    else:
+                        task_prompt = "Write a sweet, romantic paragraph explaining 3 beautiful reasons why Adem loves his wife Sara unconditionally."
+                    
+                    agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
+                    st.markdown(f"#### For You:")
+                    output_container = st.container(border=True)
+                    with output_container: st.write_stream(stream_response(agent_response.content))
+                except Exception as e:
+                    st.error("Error connecting to Adem's heart (API Issue).")
+
+    elif st.session_state.get("is_egi_mode"):
+        st.markdown("### Reality Check 📉")
+        st.write("Need a reminder of your place in the family hierarchy?")
+        
+        col_e1, col_e2 = st.columns(2)
+        egi_action = None
+        with col_e1:
+            if st.button("Generate a Fresh Roast 🔥", use_container_width=True): egi_action = "Roast"
+        with col_e2:
+            if st.button("Why Adem is Better 👑", use_container_width=True): egi_action = "Reasons"
+            
+        if egi_action:
+            with st.spinner("Calculating your flaws..."):
+                try:
+                    api_key = get_heavy_model_key()
+                    llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
+                    if egi_action == "Roast":
+                        task_prompt = "You are Adem's AI. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at Adem's sister, Egi. Tell her she's adopted."
+                    else:
+                        task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite child compared to his sister Egi."
+                    
+                    agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
+                    st.markdown(f"#### Truth Hurts:")
+                    output_container = st.container(border=True)
+                    with output_container: st.write_stream(stream_response(agent_response.content))
+                except Exception as e:
+                    st.error("Error generating roast. You got lucky this time.")
+
+    else:
+        st.markdown("### Agentic Operations")
+        st.write("Inject a Job Description below to run autonomous candidate evaluations. The Agent will use Mistral AI to map core competencies directly to your requirements.")
+        
+        jd_input = st.text_area("Target Job Description", placeholder="Paste the full job description here...", height=200)
+        col_act1, col_act2, col_act3 = st.columns(3)
+        agent_action = None
+        with col_act1:
+            if st.button("Calculate Fit Score", use_container_width=True): agent_action = "Fit Score Analysis"
+        with col_act2:
+            if st.button("Draft Cover Letter", use_container_width=True): agent_action = "Cover Letter Generation"
+        with col_act3:
+            if st.button("Extract Interview Qs", use_container_width=True): agent_action = "Interview Question Extraction"
+
+        if agent_action and not jd_input.strip(): st.warning("Please paste a Job Description first.")
+        elif agent_action and jd_input.strip():
+            if agent_action == "Cover Letter Generation" and not st.session_state.is_admin: increment_metric("cover_letters_generated")
+
+            with st.spinner(f"Executing agentic protocol: {agent_action}..."):
+                try:
+                    api_key = get_heavy_model_key()
+                    if not api_key: raise ValueError("MISTRAL_MEDIUM_KEY is missing from Streamlit Secrets or environment.")
+                    resume_content = get_resume_text()
+                    llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
+                    
+                    if agent_action == "Fit Score Analysis":
+                        task_prompt = f"Act as an expert technical recruiter. Compare this candidate's resume to the provided Job Description. Give a definitive 'Fit Score' out of 100. Then provide 3 bullet points on 'Strongest Alignments' and 2 bullet points on 'Potential Gaps/Growth Areas'. Keep it concise and professional.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
+                    elif agent_action == "Cover Letter Generation":
+                        current_date = datetime.datetime.now().strftime("%B %d, %Y")
+                        task_prompt = f"Write a highly tailored, compelling, and technical cover letter for Adem Ben Halima based on the Job Description below.\n\nCRITICAL INSTRUCTIONS:\n- Include today's date ({current_date}) at the top.\n- Extract Adem's contact info from the resume and include it in the header.\n- Address the letter specifically to 'Hiring Manager'.\n- Keep the tone confident, professional, and slightly futuristic. Limit to 3 paragraphs.\n- OUTPUT ONLY THE COVER LETTER. Do NOT add any intro text, conversational filler (e.g., 'Here is the cover letter'), or closing remarks outside the letter itself. Start directly with the date/header and end with the signature.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
+                    elif agent_action == "Interview Question Extraction":
+                        task_prompt = f"Based on the intersection of this candidate's resume and the Job Description, generate the 4 most critical technical interview questions the hiring manager should ask them to validate their fit. Provide a brief note on what a good answer from the candidate would look like.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
+
+                    agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
+                    st.session_state.messages.append({"role": "user", "content": f"System Command Executed: {agent_action} based on the provided Job Description."})
+                    st.session_state.messages.append({"role": "assistant", "content": agent_response.content})
+                    st.session_state.agentic_memory += f"\n\n--- RECENT SYSTEM OPERATION: {agent_action} ---\n{agent_response.content}\n\n"
+                except Exception as e:
+                    st.error(f"Execution Error: {e}")
+                    agent_response = None
+            
+            if agent_response:
+                st.markdown(f"#### {agent_action} Output:")
+                output_container = st.container(border=True)
+                with output_container: st.write_stream(stream_response(agent_response.content))
+                
+                if agent_action == "Cover Letter Generation":
+                    try:
+                        from reportlab.lib.pagesizes import letter
+                        from reportlab.platypus import SimpleDocTemplate, Paragraph
+                        from reportlab.lib.styles import getSampleStyleSheet
+                        import io
+                        buffer = io.BytesIO()
+                        doc = SimpleDocTemplate(buffer, pagesize=letter)
+                        styles = getSampleStyleSheet()
+                        flowables = [Paragraph(p.replace('\n', '<br />'), styles['Normal']) for p in agent_response.content.split('\n\n') if p.strip()]
+                        doc.build(flowables)
+                        pdf_bytes = buffer.getvalue()
+                        st.download_button(label="Download Cover Letter (PDF)", data=pdf_bytes, file_name="Cover_Letter_Adem_Ben_Halima.pdf", mime="application/pdf", use_container_width=True)
+                    except ImportError:
+                        st.info("💡 To enable PDF downloads, please run `pip install reportlab` and restart the app.")
+                        st.download_button(label="Download Cover Letter (TXT)", data=agent_response.content, file_name="Cover_Letter_Adem_Ben_Halima.txt", mime="text/plain", use_container_width=True)
 
 # --- HUMAN COMM-LINK TAB ---
 if is_human_comm_active:
