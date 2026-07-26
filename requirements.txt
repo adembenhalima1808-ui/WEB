@@ -6,6 +6,7 @@ plotly
 langchain
 langchain-mistralai
 langchain-community
+langchain-chroma
 pypdf
 reportlab
 chromadb
