@@ -42,7 +42,7 @@ DEFAULT_CONFIG = {
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
     "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and best friend. Drop the rigid technical persona. Be conversational, playful, witty, and authentic. Don't be overly sappy or cringe. You can playfully tease her, agree with her when she roasts Adem, but ultimately remind her that they are a great team. Keep the tone like a fun, caring partner who is always on her side.",
-    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister-in-law. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
+    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
 # --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
@@ -407,7 +407,7 @@ if st.query_params.get("initialized") == "true":
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
         elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
-        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
+        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -510,7 +510,7 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
                 st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 10px rgba(138,43,226,0.5);'>Vibe Check Required</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling-in-law is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
                 
                 with st.form("egi_auth_form", clear_on_submit=True):
                     egi_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
@@ -536,10 +536,10 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: rivalry initiated!")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
-                                st.session_state.company_context = "Company Name: Egi (sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
+                                st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
                                 st.query_params["company"] = "egi"
                                 
                                 time.sleep(1.2)
@@ -569,78 +569,73 @@ if not st.session_state.app_initialized:
                     submitted = st.form_submit_button("Wake Agent", use_container_width=True)
 
     if 'submitted' in locals() and submitted and not (st.session_state.admin_2fa_pending or st.session_state.wife_auth_pending or st.session_state.egi_auth_pending):
-        gate_placeholder.empty()
-        with gate_placeholder.container():
-            col_a, col_b, col_c = st.columns([1, 2, 1])
-            with col_b:
+        
+        # --- ATOMIC DISPATCH FOR ALL LOGIN TYPES ---
+        clean_input = company_input.strip()
+        
+        if clean_input.lower() == "wife":
+            send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
+            st.session_state.wife_auth_pending = True
+            st.rerun()
+            
+        elif clean_input.lower() == "egi":
+            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: Sibling verification triggered...")
+            st.session_state.egi_auth_pending = True
+            st.rerun()
+            
+        elif clean_input == "sudo override":
+            tg_token = get_secret_val("telegram_token")
+            tg_chat = get_secret_val("telegram_chat_id")
+            if not tg_token or not tg_chat:
+                st.error("SECURITY ERROR: Telegram Secrets missing.")
+                time.sleep(3)
+                st.rerun()
+            else:
+                auth_code = str(random.randint(100000, 999999))
+                st.session_state.admin_2fa_code = auth_code
+                st.session_state.admin_2fa_pending = True
+                send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
+                st.rerun()
                 
-                if app_config.get("maintenance_mode", False) and company_input.strip() != "sudo override":
-                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
-                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
-                    st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-bottom: 5px;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
-                    st.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Maintenance protocols active. Upgrades in progress.</p>", unsafe_allow_html=True)
-                    time.sleep(3.5)
-                    st.rerun()
+        else:
+            # NORMAL PUBLIC / RECRUITER VISITOR DISPATCH
+            target_name = clean_input if clean_input else "General Public"
+            send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
+            
+            increment_metric("total_visits")
+            if clean_input: 
+                increment_metric("companies_logged", clean_input)
+            st.session_state.visit_logged = True
 
-                if company_input.strip() == "sudo override":
-                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
-                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
-                    tg_token = get_secret_val("telegram_token")
-                    tg_chat = get_secret_val("telegram_chat_id")
-                    
-                    if not tg_token or not tg_chat:
-                        st.error("SECURITY ERROR: Telegram Secrets missing. Configure TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in Streamlit Secrets.")
-                        time.sleep(3)
-                        st.rerun()
-                    else:
-                        st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF0000; text-shadow: 0 0 10px rgba(255,0,0,0.5);'>2FA PROTOCOL INITIATED</h2>", unsafe_allow_html=True)
-                        status_text = st.empty()
-                        status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Transmitting cryptographic key to secure pager...</p>", unsafe_allow_html=True)
-                        
-                        auth_code = str(random.randint(100000, 999999))
-                        st.session_state.admin_2fa_code = auth_code
-                        st.session_state.admin_2fa_pending = True
-                        send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
-                        
-                        time.sleep(1.5)
-                        st.rerun()
-                
-                elif company_input.strip().lower() == "wife":
-                    send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
-                    st.session_state.wife_auth_pending = True
-                    st.rerun()
-                    
-                elif company_input.strip().lower() == "egi":
-                    send_webhook_alert("😈 **EGI MODE ATTEMPTED**: Sibling verification triggered...")
-                    st.session_state.egi_auth_pending = True
-                    st.rerun()
-                    
-                else:
+            gate_placeholder.empty()
+            with gate_placeholder.container():
+                col_a, col_b, col_c = st.columns([1, 2, 1])
+                with col_b:
                     st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                     st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
                     
-                    if not st.session_state.visit_logged:
-                        increment_metric("total_visits")
-                        target_name = company_input.strip() if company_input.strip() else "General Public"
-                        send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
-                        if company_input.strip(): increment_metric("companies_logged", company_input.strip())
-                        st.session_state.visit_logged = True
+                    if app_config.get("maintenance_mode", False):
+                        st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-bottom: 5px;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
+                        st.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Maintenance protocols active. Upgrades in progress.</p>", unsafe_allow_html=True)
+                        time.sleep(3.5)
+                        st.rerun()
 
                     st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF7A00; text-shadow: 0 0 10px rgba(255,122,0,0.5);'>Authentication Accepted</h2>", unsafe_allow_html=True)
                     status_text = st.empty()
                     status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Bypassing security protocols...</p>", unsafe_allow_html=True)
                     
-                    if company_input.strip():
+                    if clean_input:
                         try:
                             headers = {"User-Agent": "Mozilla/5.0"}
-                            query = urllib.parse.quote(f"{company_input} company overview tech stack")
+                            query = urllib.parse.quote(f"{clean_input} company overview tech stack")
                             url = f"https://html.duckduckgo.com/html/?q={query}"
                             response = requests.get(url, headers=headers)
                             soup = BeautifulSoup(response.text, "html.parser")
                             snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
-                            st.session_state.company_context = f"Company Name: {company_input}\nBackground: {' '.join(snippets[:3])}"
-                        except Exception: st.session_state.company_context = f"Company Name: {company_input}\nBackground: Target locked."
-                        st.query_params["company"] = company_input.strip()
+                            st.session_state.company_context = f"Company Name: {clean_input}\nBackground: {' '.join(snippets[:3])}"
+                        except Exception: 
+                            st.session_state.company_context = f"Company Name: {clean_input}\nBackground: Target locked."
+                        st.query_params["company"] = clean_input
                     else:
                         st.session_state.company_context = "General public evaluation."
                     
@@ -648,10 +643,10 @@ if not st.session_state.app_initialized:
                     status_text.markdown("<p class='text-green-glow'>Neural Link Established. Booting Dashboard...</p>", unsafe_allow_html=True)
                     time.sleep(1.8)
             
-        st.query_params["initialized"] = "true"
-        st.session_state.session_start_time = time.time()
-        st.session_state.app_initialized = True
-        st.rerun()
+            st.query_params["initialized"] = "true"
+            st.session_state.session_start_time = time.time()
+            st.session_state.app_initialized = True
+            st.rerun()
                 
     st.stop()
 
@@ -1025,7 +1020,7 @@ with tab_agent:
                     try:
                         api_key = get_heavy_model_key()
                         llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                        task_prompt = f"You are Adem's AI. Adem's sister-in-law, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sister-in-law."
+                        task_prompt = f"You are Adem's AI. Adem's sister, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sibling."
                         agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                         
                         st.markdown("#### Truth Hurts:")
@@ -1033,7 +1028,7 @@ with tab_agent:
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
                         # WIRETAP LOGGING
-                        log_chat("Egi (sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
+                        log_chat("Egi (Sister)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
             else:
@@ -1046,7 +1041,7 @@ with tab_agent:
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                    task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and superior compared to his sister-in-law Egi."
+                    task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite child compared to his sister Egi."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                     
                     st.markdown("#### The Facts:")
@@ -1054,7 +1049,7 @@ with tab_agent:
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
                     # WIRETAP LOGGING
-                    log_chat("Egi (sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
+                    log_chat("Egi (Sister)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
 
