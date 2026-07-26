@@ -327,6 +327,10 @@ st.markdown("""
     .pulse-dot-admin { display: inline-block; width: 10px; height: 10px; background-color: #FF0000; border-radius: 50%; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); animation: pulseAdmin 1.8s infinite; margin-right: 8px; }
     @keyframes pulseAdmin { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
 
+    /* Custom pink pulse animation specifically for Wife Mode */
+    @keyframes pulseWife { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 20, 147, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0); } }
+    .pulse-dot-wife { display: inline-block; width: 10px; height: 10px; background-color: #FF1493 !important; border-radius: 50%; animation: pulseWife 1.8s infinite; margin-right: 8px; }
+
     .reactor-icon { font-size: 7rem; text-align: center; display: block; margin-bottom: 10px; }
     .reactor-sleeping { filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1)); animation: reactorBreathe 3s infinite ease-in-out; }
     @keyframes reactorBreathe { 0% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } 50% { transform: scale(1.03); filter: grayscale(50%) drop-shadow(0 0 15px rgba(255,122,0,0.3)); } 100% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } }
@@ -383,6 +387,7 @@ if "is_admin" not in st.session_state: st.session_state.is_admin = (st.query_par
 if "is_wife_mode" not in st.session_state: st.session_state.is_wife_mode = (st.query_params.get("company", "").lower() == "wife")
 if "admin_2fa_pending" not in st.session_state: st.session_state.admin_2fa_pending = False
 if "admin_2fa_code" not in st.session_state: st.session_state.admin_2fa_code = ""
+if "wife_auth_pending" not in st.session_state: st.session_state.wife_auth_pending = False
 
 if st.query_params.get("initialized") == "true":
     st.session_state.app_initialized = True
@@ -399,7 +404,7 @@ if "app_initialized" not in st.session_state: st.session_state.app_initialized =
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA ---
+# --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA & WIFE MODE ---
 if not st.session_state.app_initialized:
     st.markdown("""<style>[data-testid="stSidebar"] { display: none !important; }</style>""", unsafe_allow_html=True)
     gate_placeholder = st.empty()
@@ -438,6 +443,59 @@ if not st.session_state.app_initialized:
                     st.session_state.admin_2fa_pending = False
                     st.session_state.admin_2fa_code = ""
                     st.rerun()
+            
+            elif st.session_state.wife_auth_pending:
+                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
+                st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 10px rgba(255,20,147,0.5);'>Verification Required</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>What do I like about you the most? <br><small><i>(Hint: The answer is everything)</i></small></p>", unsafe_allow_html=True)
+                
+                with st.form("wife_auth_form", clear_on_submit=True):
+                    wife_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
+                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1: submit_wife_auth = st.form_submit_button("Verify", use_container_width=True)
+                    with col_btn2: cancel_wife_auth = st.form_submit_button("Abort", use_container_width=True)
+                
+                if submit_wife_auth:
+                    if "everything" in wife_answer.lower():
+                        # The answer is correct! Trigger the romantic login sequence
+                        st.session_state.wife_auth_pending = False
+                        st.session_state.is_wife_mode = True
+                        
+                        gate_placeholder.empty()
+                        with gate_placeholder.container():
+                            col_a, col_b, col_c = st.columns([1, 2, 1])
+                            with col_b:
+                                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                                st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
+                                st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
+                                status_text = st.empty()
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
+                                
+                                if not st.session_state.visit_logged:
+                                    increment_metric("total_visits")
+                                    send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
+                                    st.session_state.visit_logged = True
+                                    
+                                st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
+                                st.query_params["company"] = "wife"
+                                
+                                time.sleep(1.2)
+                                status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established. I love you.</p>", unsafe_allow_html=True)
+                                time.sleep(2.0)
+                        
+                        st.query_params["initialized"] = "true"
+                        st.session_state.session_start_time = time.time()
+                        st.session_state.app_initialized = True
+                        st.rerun()
+                    else:
+                        st.error("ACCESS DENIED: Try again, beautiful. Read the hint.")
+                
+                if cancel_wife_auth:
+                    st.session_state.wife_auth_pending = False
+                    st.rerun()
+
             else:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='reactor-icon reactor-sleeping'>🦊</span>", unsafe_allow_html=True)
@@ -449,7 +507,7 @@ if not st.session_state.app_initialized:
                     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                     submitted = st.form_submit_button("Wake Agent", use_container_width=True)
 
-    if 'submitted' in locals() and submitted and not st.session_state.admin_2fa_pending:
+    if 'submitted' in locals() and submitted and not (st.session_state.admin_2fa_pending or st.session_state.wife_auth_pending):
         gate_placeholder.empty()
         with gate_placeholder.container():
             col_a, col_b, col_c = st.columns([1, 2, 1])
@@ -486,27 +544,10 @@ if not st.session_state.app_initialized:
                         time.sleep(1.5)
                         st.rerun()
                 
-                # --- WIFE MODE EASTER EGG ---
+                # Intercept "Wife" input and force the secondary authentication screen
                 elif company_input.strip().lower() == "wife":
-                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
-                    st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
-                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
-                    
-                    status_text = st.empty()
-                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
-                    
-                    if not st.session_state.visit_logged:
-                        increment_metric("total_visits")
-                        send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
-                        st.session_state.visit_logged = True
-                        
-                    st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
-                    st.session_state.is_wife_mode = True
-                    st.query_params["company"] = "wife"
-                    
-                    time.sleep(1.2)
-                    status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established. I love you.</p>", unsafe_allow_html=True)
-                    time.sleep(2.0)
+                    st.session_state.wife_auth_pending = True
+                    st.rerun()
                     
                 else:
                     st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
@@ -567,7 +608,7 @@ with st.sidebar:
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                    <span class="pulse-dot" style="background-color: #FF1493 !important; box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7) !important;"></span>
+                    <span class="pulse-dot-wife"></span>
                     <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA ❤️</span>
                 </div>
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
@@ -628,6 +669,7 @@ with st.sidebar:
         st.session_state.app_initialized = False
         st.session_state.is_admin = False
         st.session_state.is_wife_mode = False
+        st.session_state.wife_auth_pending = False
         st.session_state.admin_2fa_pending = False
         st.session_state.company_context = "General public evaluation."
         st.session_state.agentic_memory = ""
@@ -701,7 +743,7 @@ with tab_chat:
                 greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, sweetheart"
                 intro_text = (
                     f"{greeting}. ❤️\n\n"
-                    "I am Adem's digital twin, but right now, I am entirely yours. He built this private space just for you.\n\n"
+                    "I am Adem's Kitsune agent, but right now, I am entirely dedicated to you. He built this private space just for you.\n\n"
                     "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
                 )
             else:
@@ -728,8 +770,9 @@ with tab_chat:
         chat_container = st.container(height=500, border=True)
         with chat_container:
             for message in st.session_state.messages:
+                # The Assistant always remains the fox, while the User changes to 👩‍💻 in Wife Mode
                 if message["role"] == "assistant":
-                    avatar_icon = "💖" if st.session_state.get("is_wife_mode") else "🦊"
+                    avatar_icon = "🦊"
                 else:
                     avatar_icon = "👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻"
                     
@@ -748,7 +791,7 @@ with tab_chat:
             st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
             with chat_container:
-                bot_av = "💖" if st.session_state.get("is_wife_mode") else "🦊"
+                bot_av = "🦊" # Kept as the fox for the agent's identity
                 with st.chat_message("assistant", avatar=bot_av):
                     with st.spinner("Processing query..." if not st.session_state.get("is_wife_mode") else "Thinking of you..."):
                         time.sleep(0.6)
