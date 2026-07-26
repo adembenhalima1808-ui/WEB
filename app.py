@@ -39,9 +39,6 @@ DEFAULT_CONFIG = {
     "maintenance_mode": False,
     "human_comm_enabled": True,
     "refresh_rate": 5,
-    "discord_webhook": "",
-    "telegram_token": "",
-    "telegram_chat_id": "",
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them."
 }
@@ -92,17 +89,14 @@ def save_live_chat(data):
 
 app_config = load_config()
 
-# Helper to fetch keys safely from config.json, st.secrets, or environment variables
+# Securely fetch keys strictly from Streamlit Secrets or Environment Variables (.env)
 def get_secret_val(key_name, default=""):
-    val = app_config.get(key_name.lower(), "").strip()
-    if val: return val
     try:
         if key_name.upper() in st.secrets:
             return str(st.secrets[key_name.upper()]).strip()
     except Exception: pass
     return os.getenv(key_name.upper(), default)
 
-# Strict heavy key fetcher
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
@@ -110,16 +104,13 @@ def get_heavy_model_key():
 def send_webhook_alert(message):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
-        try: 
-            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=3)
-        except Exception: 
-            pass
+        try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
+        except Exception: pass
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
     if tg_token and tg_chat_id:
-        if tg_token.lower().startswith("bot"): 
-            tg_token = tg_token[3:]
+        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
         try:
             tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
             payload = {
@@ -127,11 +118,9 @@ def send_webhook_alert(message):
                 "text": f"🦊 *KITSUNE PAGER:*\n{message}",
                 "parse_mode": "Markdown"
             }
-            res = requests.post(tg_url, json=payload, timeout=4)
-            if not res.ok:
-                st.toast(f"Telegram Alert Error: {res.json().get('description')}", icon="⚠️")
-        except Exception as e:
-            pass
+            requests.post(tg_url, json=payload, timeout=3)
+        except Exception: pass
+
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
     tg_token = get_secret_val("telegram_token")
@@ -242,7 +231,6 @@ def extract_skills_from_resume(company_context):
         api_key = get_heavy_model_key()
         if not api_key: raise ValueError("Missing MISTRAL_MEDIUM_KEY")
         resume_text = get_resume_text()
-        # Explicitly using the medium model with the medium key
         llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1, mistral_api_key=api_key)
         prompt = (f"Analyze this resume text: {resume_text}\n\nTarget Company Context: {company_context}\n\nExtract the 6 most prominent, broad engineering competencies (e.g., 'Data Engineering', 'Machine Learning', 'DevOps'). If a Target Company Context is provided, prioritize the competencies from the resume that best align with that company's focus. Assign a realistic proficiency score out of 100 for each based on the depth of experience shown. Respond ONLY with a valid JSON object in this exact format, with no markdown blocks, no intro, and no extra text:\n" + '{"categories": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6"], "scores": [95, 90, 85, 80, 85, 90]}')
         response = llm.invoke([HumanMessage(content=prompt)])
@@ -257,7 +245,6 @@ def extract_stack_from_resume(company_context):
         api_key = get_heavy_model_key()
         if not api_key: raise ValueError("Missing MISTRAL_MEDIUM_KEY")
         resume_text = get_resume_text()
-        # Explicitly using the medium model with the medium key
         llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.1, mistral_api_key=api_key)
         prompt = (f"Analyze this resume text: {resume_text}\n\nTarget Company Context: {company_context}\n\nExtract exactly 5 specific technologies, frameworks, or tools from the resume. If a Target Company Context is provided, prioritize the tools from the resume that best align with that company's likely tech stack. Keep the names short and professional (e.g., 'Python 3.11', 'Docker', 'AWS'). Respond ONLY with a valid JSON array of strings, with no markdown blocks, no intro, and no extra text:\n" + '["Tech1", "Tech2", "Tech3", "Tech4", "Tech5"]')
         response = llm.invoke([HumanMessage(content=prompt)])
@@ -399,7 +386,7 @@ if "app_initialized" not in st.session_state: st.session_state.app_initialized =
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- THE CYBER-GATE LOCK SCREEN WITH SMART 2FA BYPASS ---
+# --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA ---
 if not st.session_state.app_initialized:
     st.markdown("""<style>[data-testid="stSidebar"] { display: none !important; }</style>""", unsafe_allow_html=True)
     gate_placeholder = st.empty()
@@ -411,7 +398,7 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='reactor-icon reactor-waking'>🔐</span>", unsafe_allow_html=True)
                 st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-bottom: 5px;'>AUTHORIZATION REQUIRED</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Enter 6-digit code sent to Telegram or use Emergency Passcode `999999`.</p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Enter 6-digit verification code sent to your Telegram Neural Pager.</p>", unsafe_allow_html=True)
                 
                 with st.form("otp_form", clear_on_submit=True):
                     otp_input = st.text_input("Enter Code", max_chars=6, type="password", label_visibility="collapsed")
@@ -421,7 +408,8 @@ if not st.session_state.app_initialized:
                     with col_btn2: cancel_otp = st.form_submit_button("Abort", use_container_width=True)
                 
                 if submit_otp:
-                    if otp_input.strip() == st.session_state.admin_2fa_code or otp_input.strip() == "999999":
+                    # STRICT MATCH: Only accepts the actual code dispatched to Telegram
+                    if st.session_state.admin_2fa_code and otp_input.strip() == st.session_state.admin_2fa_code:
                         st.session_state.admin_2fa_pending = False
                         st.session_state.admin_2fa_code = ""
                         st.session_state.is_admin = True
@@ -465,17 +453,11 @@ if not st.session_state.app_initialized:
 
                 if company_input.strip() == "sudo override":
                     tg_token = get_secret_val("telegram_token")
+                    tg_chat = get_secret_val("telegram_chat_id")
                     
-                    if not tg_token:
-                        st.markdown("<h2 class='text-green-glow' style='text-align: center; margin-bottom: 5px;'>FIRST-TIME ROOT INITIALIZATION</h2>", unsafe_allow_html=True)
-                        st.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>No Telegram webhook found. Auto-bypassing 2FA gate...</p>", unsafe_allow_html=True)
-                        st.session_state.is_admin = True
-                        st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
-                        st.query_params["company"] = "ROOT"
-                        st.query_params["initialized"] = "true"
-                        st.session_state.session_start_time = time.time()
-                        st.session_state.app_initialized = True
-                        time.sleep(1.5)
+                    if not tg_token or not tg_chat:
+                        st.error("SECURITY ERROR: Telegram Secrets missing. Configure TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in Streamlit Secrets.")
+                        time.sleep(3)
                         st.rerun()
                     else:
                         st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF0000; text-shadow: 0 0 10px rgba(255,0,0,0.5);'>2FA PROTOCOL INITIATED</h2>", unsafe_allow_html=True)
@@ -485,7 +467,7 @@ if not st.session_state.app_initialized:
                         auth_code = str(random.randint(100000, 999999))
                         st.session_state.admin_2fa_code = auth_code
                         st.session_state.admin_2fa_pending = True
-                        send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`\n\n_Emergency Bypass Code: 999999_")
+                        send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
                         
                         time.sleep(1.5)
                         st.rerun()
@@ -728,7 +710,6 @@ with tab_chat:
 
             if selected_prompt in st.session_state.quick_prompts:
                 try:
-                    # Uses Standard API Key for simple fast suggestions
                     api_key = get_secret_val("MISTRAL_API_KEY")
                     if api_key:
                         llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=api_key)
@@ -760,9 +741,8 @@ with tab_agent:
 
         with st.spinner(f"Executing agentic protocol: {agent_action}..."):
             try:
-                # Uses Heavy Medium Key
                 api_key = get_heavy_model_key()
-                if not api_key: raise ValueError("MISTRAL_MEDIUM_KEY is not configured yet. Go to Developer Options to set it.")
+                if not api_key: raise ValueError("MISTRAL_MEDIUM_KEY is missing from Streamlit Secrets or environment.")
                 resume_content = get_resume_text()
                 llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
                 
@@ -880,6 +860,8 @@ if st.session_state.is_admin:
                 st.write("No conversations intercepted yet.")
 
         with adm_tab2:
+            st.info("🔒 **Security Enforcement Active:** API keys and Webhook credentials are hard-locked to Streamlit Secrets / Environment Variables and cannot be modified or leaked via this UI.")
+            
             with st.form("config_form"):
                 new_title = st.text_input("Main Hero Title", value=app_config.get("title", ""))
                 new_intro = st.text_area("Hero Introduction Text", value=app_config.get("intro_text", ""), height=100)
@@ -892,12 +874,6 @@ if st.session_state.is_admin:
                 col_cfg1, col_cfg2 = st.columns(2)
                 with col_cfg1: new_status = st.text_input("Availability Status", value=app_config.get("status_text", ""))
                 with col_cfg2: new_color = st.color_picker("Status Pulse Color", value=app_config.get("status_color", "#FF7A00"))
-                
-                st.markdown("#### Neural Pager (Webhooks)")
-                new_discord = st.text_input("Discord Webhook URL", value=app_config.get("discord_webhook", ""))
-                col_tg1, col_tg2 = st.columns(2)
-                with col_tg1: new_tg_token = st.text_input("Telegram Bot Token", value=app_config.get("telegram_token", ""), type="password")
-                with col_tg2: new_tg_chat = st.text_input("Telegram Chat ID", value=app_config.get("telegram_chat_id", ""))
 
                 st.markdown("#### Human Comm-Link Controls")
                 col_hc1, col_hc2 = st.columns(2)
@@ -921,9 +897,6 @@ if st.session_state.is_admin:
                     app_config["location"] = new_location
                     app_config["status_text"] = new_status
                     app_config["status_color"] = new_color
-                    app_config["discord_webhook"] = new_discord
-                    app_config["telegram_token"] = new_tg_token
-                    app_config["telegram_chat_id"] = new_tg_chat
                     app_config["human_comm_enabled"] = new_human_enabled
                     app_config["refresh_rate"] = int(new_refresh_rate)
                     app_config["persona_prompt"] = new_persona
