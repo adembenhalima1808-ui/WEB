@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 streamlit
 requests
 beautifulsoup4
@@ -6,6 +7,7 @@ plotly
 langchain
 langchain-core
 langchain-community
+langchain-classic
 langchain-mistralai
 langchain-chroma
 langchain-text-splitters
