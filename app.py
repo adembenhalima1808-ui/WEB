@@ -609,7 +609,7 @@ with st.sidebar:
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-wife"></span>
-                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA ❤️</span>
+                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA </span>
                 </div>
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
             </div>
@@ -740,9 +740,9 @@ with tab_chat:
             current_hour = datetime.datetime.now().hour
             
             if st.session_state.get("is_wife_mode"):
-                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, sweetheart"
+                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, Dashri"
                 intro_text = (
-                    f"{greeting}. ❤️\n\n"
+                    f"{greeting}. \n\n"
                     "I am Adem's Kitsune agent, but right now, I am entirely dedicated to you. He built this private space just for you.\n\n"
                     "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
                 )
