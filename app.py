@@ -1252,7 +1252,7 @@ if is_human_comm_active:
 if st.session_state.is_admin:
     with tab_admin:
         st.markdown("### ROOT COMMAND CENTER")
-        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
+        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories", "CMS & Identity", "Vector Brain Injection"])
         
         with adm_tab1:
             analytics_data = load_analytics()
