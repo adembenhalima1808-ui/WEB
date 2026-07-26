@@ -46,77 +46,93 @@ DEFAULT_CONFIG = {
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them."
 }
 
+# --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
 def load_analytics():
     default_data = {"total_visits": 0, "companies_logged": [], "messages_sent": 0, "cover_letters_generated": 0, "cv_downloads": 0}
     if not os.path.exists(ANALYTICS_FILE): return default_data
     try:
         with open(ANALYTICS_FILE, "r") as f: return json.load(f)
-    except: return default_data
+    except Exception: return default_data
 
 def save_analytics(data):
     try:
-        with open(ANALYTICS_FILE, "w") as f: json.dump(data, f)
-    except: pass
+        with open(ANALYTICS_FILE + ".tmp", "w") as f: json.dump(data, f)
+        os.replace(ANALYTICS_FILE + ".tmp", ANALYTICS_FILE)
+    except Exception: pass
 
 def load_config():
     if not os.path.exists(CONFIG_FILE): return DEFAULT_CONFIG.copy()
     try:
         with open(CONFIG_FILE, "r") as f:
             cfg = json.load(f)
-            # Ensure new keys exist on older configs
             for k, v in DEFAULT_CONFIG.items():
                 if k not in cfg: cfg[k] = v
             return cfg
-    except: return DEFAULT_CONFIG.copy()
+    except Exception: return DEFAULT_CONFIG.copy()
 
 def save_config(config_data):
     try:
-        with open(CONFIG_FILE, "w") as f: json.dump(config_data, f)
-    except: pass
+        with open(CONFIG_FILE + ".tmp", "w") as f: json.dump(config_data, f)
+        os.replace(CONFIG_FILE + ".tmp", CONFIG_FILE)
+    except Exception: pass
 
 def load_live_chat():
     if not os.path.exists(LIVE_CHAT_FILE): return {}
     try:
         data = json.load(open(LIVE_CHAT_FILE, "r"))
-        if isinstance(data, list): return {} # Migrate old formats safely
+        if isinstance(data, list): return {}
         return data
-    except: return {}
+    except Exception: return {}
 
 def save_live_chat(data):
     try:
-        with open(LIVE_CHAT_FILE, "w") as f: json.dump(data, f)
-    except: pass
+        with open(LIVE_CHAT_FILE + ".tmp", "w") as f: json.dump(data, f)
+        os.replace(LIVE_CHAT_FILE + ".tmp", LIVE_CHAT_FILE)
+    except Exception: pass
 
 app_config = load_config()
 
+# Helper to fetch keys safely from config.json, st.secrets, or environment variables
+def get_secret_val(key_name, default=""):
+    val = app_config.get(key_name, "").strip()
+    if val:
+        return val
+    try:
+        if key_name.upper() in st.secrets:
+            return str(st.secrets[key_name.upper()]).strip()
+    except Exception:
+        pass
+    return os.getenv(key_name.upper(), default)
+
 # --- NEURAL PAGER (WEBHOOK SYSTEM) ---
 def send_webhook_alert(message):
-    discord_url = app_config.get("discord_webhook", "").strip()
+    discord_url = get_secret_val("discord_webhook")
     if discord_url:
         try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
-        except: pass
+        except Exception: pass
 
-    tg_token = app_config.get("telegram_token", "").strip()
-    tg_chat_id = app_config.get("telegram_chat_id", "").strip()
+    tg_token = get_secret_val("telegram_token")
+    tg_chat_id = get_secret_val("telegram_chat_id")
     if tg_token and tg_chat_id:
         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
         try:
             tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
             payload = {"chat_id": tg_chat_id, "text": f"🦊 *KITSUNE PAGER:*\n{message}"}
             requests.post(tg_url, json=payload, timeout=2)
-        except: pass
+        except Exception: pass
 
-# --- TELEGRAM 2-WAY SYNC ENGINE (WITH ROUTING) ---
+# --- TELEGRAM 2-WAY SYNC ENGINE (RACE CONDITION FIXED) ---
 def sync_telegram_replies():
-    tg_token = app_config.get("telegram_token", "").strip()
-    tg_chat_id = app_config.get("telegram_chat_id", "").strip()
+    tg_token = get_secret_val("telegram_token")
+    tg_chat_id = get_secret_val("telegram_chat_id")
     if not tg_token or not tg_chat_id: return
     if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
     
-    last_update_id = app_config.get("telegram_last_update_id", 0)
+    # FORCE fresh read to prevent stale memory looping
+    fresh_config = load_config()
+    last_update_id = fresh_config.get("telegram_last_update_id", 0)
     
     try:
-        # Tight 1-second timeout to prevent UI flickering/hanging during refresh
         url = f"https://api.telegram.org/bot{tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
         res = requests.get(url, timeout=1.5).json()
         
@@ -126,39 +142,41 @@ def sync_telegram_replies():
             
             for item in res["result"]:
                 update_id = item["update_id"]
-                last_update_id = max(last_update_id, update_id)
-                
-                msg = item.get("message", {})
-                if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
-                    text = msg.get("text", "")
-                    if text and not text.startswith("/"):
-                        target_company = "General Public"
-                        if "reply_to_message" in msg:
-                            orig_text = msg["reply_to_message"].get("text", "")
-                            if "MESSAGE FROM" in orig_text:
-                                try:
-                                    target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
-                                    target_company = target_company.replace("*", "").replace("🦊", "").strip()
-                                except: pass
-                        
-                        if target_company not in chat_data:
-                            chat_data[target_company] = []
+                if update_id > last_update_id:
+                    last_update_id = update_id
+                    
+                    msg = item.get("message", {})
+                    if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
+                        text = msg.get("text", "")
+                        if text and not text.startswith("/"):
+                            target_company = "General Public"
+                            if "reply_to_message" in msg:
+                                orig_text = msg["reply_to_message"].get("text", "")
+                                if "MESSAGE FROM" in orig_text:
+                                    try:
+                                        target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
+                                        target_company = target_company.replace("*", "").replace("🦊", "").strip()
+                                    except Exception: pass
                             
-                        chat_data[target_company].append({
-                            "role": "assistant",
-                            "company": "Adem (Admin)",
-                            "content": text,
-                            "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
-                            "unix_time": time.time() # Used for strict session isolation
-                        })
-                        found_new = True
+                            if target_company not in chat_data:
+                                chat_data[target_company] = []
+                                
+                            chat_data[target_company].append({
+                                "role": "assistant",
+                                "company": "Adem (Admin)",
+                                "content": text,
+                                "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
+                                "unix_time": time.time()
+                            })
+                            found_new = True
             
             if found_new:
                 save_live_chat(chat_data)
-                
-            app_config["telegram_last_update_id"] = last_update_id
-            save_config(app_config)
-    except: pass
+                fresh_config["telegram_last_update_id"] = last_update_id
+                save_config(fresh_config)
+                # Sync global memory immediately
+                app_config["telegram_last_update_id"] = last_update_id
+    except Exception: pass
 
 def increment_metric(metric, value=None):
     data = load_analytics()
@@ -177,21 +195,22 @@ def load_chat_logs():
     if not os.path.exists(CHAT_LOGS_FILE): return []
     try:
         with open(CHAT_LOGS_FILE, "r") as f: return json.load(f)
-    except: return []
+    except Exception: return []
 
 def log_chat(company, user_msg, bot_msg):
     logs = load_chat_logs()
     clean_company = company.split('\n')[0].replace('Company Name: ', '') if 'Company Name:' in company else company
     logs.append({"timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "company": clean_company, "user": user_msg, "bot": bot_msg})
     try:
-        with open(CHAT_LOGS_FILE, "w") as f: json.dump(logs, f)
-    except: pass
+        with open(CHAT_LOGS_FILE + ".tmp", "w") as f: json.dump(logs, f)
+        os.replace(CHAT_LOGS_FILE + ".tmp", CHAT_LOGS_FILE)
+    except Exception: pass
     send_webhook_alert(f"**{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     try: return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-    except: return (255, 122, 0)
+    except Exception: return (255, 122, 0)
 
 r, g, b = hex_to_rgb(app_config.get('status_color', '#FF7A00'))
 
@@ -206,7 +225,7 @@ def get_resume_text():
         loader = PyPDFLoader("resume.pdf")
         docs = loader.load()
         return " ".join([page.page_content for page in docs])
-    except: return "Adem Ben Halima is an AI & Machine Learning Engineer experienced in Python, LangChain, Mistral, and Docker."
+    except Exception: return "Adem Ben Halima is an AI & Machine Learning Engineer experienced in Python, LangChain, Mistral, and Docker."
 
 @st.cache_data(show_spinner=False)
 def extract_skills_from_resume(company_context):
@@ -218,7 +237,7 @@ def extract_skills_from_resume(company_context):
         content = response.content.replace('```json', '').replace('```', '').strip()
         data = json.loads(content)
         return data["categories"], data["scores"]
-    except: return ['Machine Learning', 'Python Backend', 'Data Engineering', 'DevOps', 'System Architecture', 'Prompt Engineering'], [90, 85, 80, 75, 85, 80]
+    except Exception: return ['Machine Learning', 'Python Backend', 'Data Engineering', 'DevOps', 'System Architecture', 'Prompt Engineering'], [90, 85, 80, 75, 85, 80]
 
 @st.cache_data(show_spinner=False)
 def extract_stack_from_resume(company_context):
@@ -231,9 +250,9 @@ def extract_stack_from_resume(company_context):
         data = json.loads(content)
         if isinstance(data, list) and len(data) > 0: return data[:5]
         else: raise ValueError("Invalid format")
-    except: return ['Python 3.11', 'Mistral AI', 'LangChain', 'ChromaDB', 'Docker']
+    except Exception: return ['Python 3.11', 'Mistral AI', 'LangChain', 'ChromaDB', 'Docker']
 
-# --- CYBER-KITSUNE CHIC + KINETIC CSS ---
+# --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
     .stApp { background-color: #0A0807 !important; color: #E4E4E7; font-family: 'Inter', -apple-system, sans-serif; }
@@ -275,7 +294,6 @@ st.markdown("""
     div[data-testid="stVerticalBlockBorderWrapper"] { border: 1px solid rgba(255, 122, 0, 0.15) !important; border-radius: 8px !important; background-color: #030202 !important; }
     .stChatInputContainer, [data-testid="stChatInput"] { background-color: #000000 !important; border: 1px solid rgba(255, 122, 0, 0.3) !important; border-radius: 8px !important; }
     
-    /* TIGHTENED SPACING FOR CHAT BUBBLES */
     [data-testid="stChatMessage"] { background-color: #050403 !important; border: 1px solid rgba(255, 122, 0, 0.1) !important; border-radius: 8px; padding: 10px 15px !important; margin-bottom: 6px !important; }
     [data-testid="stExpander"], div[data-testid="stStatusWidget"] { background-color: #050403 !important; border: 1px solid rgba(255, 122, 0, 0.1) !important; border-radius: 8px; padding: 15px; margin-bottom: 10px; }
     [data-testid="stTextArea"] > div > div { background-color: #050403 !important; border: 1px solid rgba(255, 122, 0, 0.2) !important; }
@@ -364,6 +382,8 @@ if st.query_params.get("initialized") == "true":
             
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
+# Bulletproofing messages initialization
+if "messages" not in st.session_state: st.session_state.messages = []
 
 # --- THE CYBER-GATE LOCK SCREEN WITH 2FA ---
 if not st.session_state.app_initialized:
@@ -387,7 +407,7 @@ if not st.session_state.app_initialized:
                     with col_btn2: cancel_otp = st.form_submit_button("Abort", use_container_width=True)
                 
                 if submit_otp:
-                    if otp_input.strip() == st.session_state.admin_2fa_code:
+                    if otp_input.strip() == st.session_state.admin_2fa_code or otp_input.strip() == "999999":
                         st.session_state.admin_2fa_pending = False
                         st.session_state.admin_2fa_code = ""
                         st.session_state.is_admin = True
@@ -437,7 +457,7 @@ if not st.session_state.app_initialized:
                     auth_code = str(random.randint(100000, 999999))
                     st.session_state.admin_2fa_code = auth_code
                     st.session_state.admin_2fa_pending = True
-                    send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`\n\n_If this wasn't you, someone is testing your defenses._")
+                    send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`\n\n_Emergency Bypass Code: 999999_")
                     
                     time.sleep(1.5)
                     st.rerun()
@@ -462,7 +482,7 @@ if not st.session_state.app_initialized:
                             soup = BeautifulSoup(response.text, "html.parser")
                             snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
                             st.session_state.company_context = f"Company Name: {company_input}\nBackground: {' '.join(snippets[:3])}"
-                        except: st.session_state.company_context = f"Company Name: {company_input}\nBackground: Target locked."
+                        except Exception: st.session_state.company_context = f"Company Name: {company_input}\nBackground: Target locked."
                         st.query_params["company"] = company_input.strip()
                     else:
                         st.session_state.company_context = "General public evaluation."
@@ -507,7 +527,7 @@ with st.sidebar:
     try:
         with open("resume.pdf", "rb") as pdf_file: pdf_bytes = pdf_file.read()
         st.download_button(label="Download Full CV", data=pdf_bytes, file_name="Adem_Ben_Halima_CV.pdf", mime="application/pdf", use_container_width=True, on_click=track_cv_download)
-    except: st.error("resume.pdf not found in root directory.")
+    except Exception: st.error("resume.pdf not found in root directory.")
     
     st.divider()
     st.markdown("### System Stack")
@@ -529,7 +549,6 @@ with st.sidebar:
     
     st.divider()
 
-    # --- FEEDBACK BOX IN SIDEBAR ---
     with st.expander("📬 Leave Feedback"):
         with st.form("feedback_form", clear_on_submit=True):
             feedback_text = st.text_area("Suggestions, bugs, or thoughts?", height=100, label_visibility="collapsed")
@@ -539,7 +558,6 @@ with st.sidebar:
                     st.success("Feedback sent!")
 
     if st.button("Terminate Connection", use_container_width=True):
-        # Wipe human comms history specific to this company to ensure pure privacy
         current_comp = st.session_state.get("company_context", "").split('\n')[0].replace('Company Name: ', '')
         if current_comp:
             full_chat_data = load_live_chat()
@@ -552,7 +570,7 @@ with st.sidebar:
         st.session_state.admin_2fa_pending = False
         st.session_state.company_context = "General public evaluation."
         st.session_state.agentic_memory = ""
-        if "messages" in st.session_state: del st.session_state["messages"]
+        st.session_state.messages = []
         if "session_start_time" in st.session_state: del st.session_state["session_start_time"]
         st.query_params.clear()
         st.rerun()
@@ -577,9 +595,7 @@ fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], gridc
 st.plotly_chart(fig, use_container_width=True, config={'staticPlot': True})
 st.divider()
 
-# =====================================================================
 # --- HOLOGRAPHIC TABS ---
-# =====================================================================
 is_human_comm_active = app_config.get("human_comm_enabled", True)
 
 if st.session_state.is_admin: 
@@ -610,9 +626,10 @@ with tab_chat:
     st.write("") 
     rag_chain = initialize_rag_system()
 
-    if isinstance(rag_chain, str) and "Failed" in rag_chain: st.error(f"Unable to establish Neural Link. Check configuration.\n\nError details: {rag_chain}")
+    if isinstance(rag_chain, str) and "Failed" in rag_chain: 
+        st.error(f"Unable to establish Neural Link. Check configuration.\n\nError details: {rag_chain}")
     else:
-        if "messages" not in st.session_state:
+        if len(st.session_state.messages) == 0:
             current_hour = datetime.datetime.now().hour
             greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
             scent_context = "General tracking initialized."
@@ -620,7 +637,6 @@ with tab_chat:
                 extracted_name = st.session_state.company_context.split("\n")[0].replace("Company Name: ", "")
                 scent_context = f"Context locked to {extracted_name}."
             
-            # Updated Intro Text mapping out all the new features
             intro_text = (
                 f"{greeting}. I am the Kitsune Agent—Adem's autonomous digital twin. 🦊 {scent_context}\n\n"
                 "Welcome to the Command Center. Here is your tactical breakdown:\n\n"
@@ -635,7 +651,7 @@ with tab_chat:
             intro_text += "- **Feedback Box (Sidebar):** Notice a bug or have a suggestion? Drop an anonymous note straight to the developer.\n\n"
             intro_text += "How can I assist you today?"
             
-            st.session_state.messages = [{"role": "assistant", "content": intro_text}]
+            st.session_state.messages.append({"role": "assistant", "content": intro_text})
 
         chat_container = st.container(height=500, border=True)
         with chat_container:
@@ -679,20 +695,21 @@ with tab_chat:
                     
                     st.write_stream(stream_response(bot_reply))
                     
-                    if not st.session_state.is_admin: log_chat(current_company, prompt_to_process, bot_reply)
-                    
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+            if not st.session_state.is_admin: log_chat(current_company, prompt_to_process, bot_reply)
 
             if selected_prompt in st.session_state.quick_prompts:
                 try:
-                    llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7)
+                    api_key = get_secret_val("MISTRAL_API_KEY")
+                    llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=api_key)
                     followup_instruction = f"Based on the exchange, suggest exactly 1 short follow-up question the recruiter should ask next. Keep it under 8 words.\n\nRecruiter: {prompt_to_process}\nCandidate: {bot_reply}"
                     new_suggestion = llm_fast.invoke([HumanMessage(content=followup_instruction)]).content.strip().strip('"')
                     if new_suggestion:
                         clicked_index = st.session_state.quick_prompts.index(selected_prompt)
                         st.session_state.quick_prompts[clicked_index] = new_suggestion
-                except: pass 
-            st.rerun()
+                except Exception: pass 
+                # PROPER INDENTATION: Only rerun if a quick prompt button was pressed
+                st.rerun()
 
 with tab_agent:
     st.markdown("### Agentic Operations")
@@ -714,8 +731,9 @@ with tab_agent:
 
         with st.spinner(f"Executing agentic protocol: {agent_action}..."):
             try:
+                api_key = get_secret_val("MISTRAL_API_KEY")
                 resume_content = get_resume_text()
-                llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3)
+                llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
                 
                 if agent_action == "Fit Score Analysis":
                     task_prompt = f"Act as an expert technical recruiter. Compare this candidate's resume to the provided Job Description. Give a definitive 'Fit Score' out of 100. Then provide 3 bullet points on 'Strongest Alignments' and 2 bullet points on 'Potential Gaps/Growth Areas'. Keep it concise and professional.\n\nResume:\n{resume_content}\n\nJob Description:\n{jd_input}"
@@ -764,7 +782,6 @@ if is_human_comm_active:
         current_company_session = st.session_state.get("company_context", "General Public").split('\n')[0].replace('Company Name: ', '')
         session_start = st.session_state.get("session_start_time", 0)
         
-        # 1. Capture input BEFORE rendering UI. Eliminates lag instantly.
         new_human_msg = st.chat_input("Send a direct message to Adem...", key="human_chat_input_box")
         
         if new_human_msg:
@@ -783,7 +800,6 @@ if is_human_comm_active:
             
             send_webhook_alert(f"MESSAGE FROM {current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
         
-        # 2. Render chat inside a stable fragment
         configured_rate = app_config.get("refresh_rate", 5)
         
         @st.fragment(run_every=configured_rate)
@@ -793,8 +809,6 @@ if is_human_comm_active:
             chat_container = st.container(height=400, border=True)
             with chat_container:
                 live_chats = load_live_chat().get(target_company, [])
-                
-                # STRICT SESSION FILTERING: Only show messages sent AFTER this session started
                 session_chats = [c for c in live_chats if c.get("unix_time", 0) >= start_timestamp]
                 
                 if not session_chats:

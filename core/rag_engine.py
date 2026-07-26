@@ -1,48 +1,60 @@
+import os
 import streamlit as st
 from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from langchain_community.document_loaders import TextLoader
 from langchain_chroma import Chroma
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_classic.chains import create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate  # <-- Added missing import
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def initialize_rag_system():
     try:
-        loader = TextLoader("my_brain.txt")
-        docs = loader.load()
+        # Securely fetch API key
+        api_key = os.getenv("MISTRAL_API_KEY", "")
+        if not api_key and "MISTRAL_API_KEY" in st.secrets:
+            api_key = st.secrets["MISTRAL_API_KEY"]
+            
+        if not api_key:
+            return "Initialization Failed: Missing MISTRAL_API_KEY."
+
+        # Initialize Embeddings and LLM
+        embeddings = MistralAIEmbeddings(model="mistral-embed", mistral_api_key=api_key)
+        llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.3, mistral_api_key=api_key)
+
+        # Fallback if brain file is missing
+        if not os.path.exists("my_brain.txt"):
+            with open("my_brain.txt", "w", encoding="utf-8") as f:
+                f.write("Adem Ben Halima is a highly skilled AI & Machine Learning Engineer.")
         
-        text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-        split_docs = text_splitter.split_documents(docs)
-        
-        embeddings = MistralAIEmbeddings(model="mistral-embed")
-        vector_store = Chroma.from_documents(split_docs, embeddings)
-        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-        
-        llm = ChatMistralAI(model="mistral-small-latest", temperature=0.1)
-        
-        # Define the Professional Persona Prompt with Dynamic Context
-        # Define the Professional Persona Prompt with Strict Brevity Constraints
+        loader = TextLoader("my_brain.txt", encoding="utf-8")
+        documents = loader.load()
+
+        # Split text into manageable chunks
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        docs = text_splitter.split_documents(documents)
+
+        # Create Vector Store
+        vectorstore = Chroma.from_documents(documents=docs, embedding=embeddings)
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+        # Define the Prompt Template
         system_prompt = (
-            "You are the professional digital twin of this AI Engineer. "
-            "The user is evaluating the candidate for this specific company context: {company_context}. "
-            "Tailor your answers to highlight skills relevant to this company. "
-            "CRITICAL INSTRUCTIONS FOR OUTPUT: "
-            "1. Be extremely concise, punchy, and direct. "
-            "2. Never exceed 3 sentences for a standard reply. "
-            "3. If listing skills or projects, use maximum 3 short bullet points. "
-            "4. Eliminate all fluff and filler words. Speak like a senior, confident engineer. "
-            "5. Base all answers strictly on the Candidate Context below.\n\n"
-            "Candidate Context: {context}"
+            "You are the Kitsune Agent, an autonomous digital twin of Adem Ben Halima.\n"
+            "Use the following retrieved context to answer the user's question accurately.\n"
+            "Context: {context}\n\n"
+            "Target Company Context: {company_context}\n"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("human", "{input}"),
         ])
-        
+
+        # Build Retrieval Chains
         question_answer_chain = create_stuff_documents_chain(llm, prompt)
         rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
         return rag_chain
     except Exception as e:
-        return f"Initialization Failed: {e}"
+        return f"Initialization Failed: {str(e)}"
