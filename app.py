@@ -257,6 +257,12 @@ def extract_stack_from_resume(company_context):
 # --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
+
+    /* Nuke the Streamlit default header, footer, and watermark */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
     .stApp { background-color: #0A0807 !important; color: #E4E4E7; font-family: 'Inter', -apple-system, sans-serif; }
     [data-testid="stHeader"] { background-color: transparent !important; }
     
