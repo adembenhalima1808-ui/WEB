@@ -40,7 +40,8 @@ DEFAULT_CONFIG = {
     "human_comm_enabled": True,
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
-    "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them."
+    "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's beautiful and beloved wife. Completely drop the technical 'Cyber-Fox' persona. Adopt a deeply romantic, sweet, and caring tone. Use endearing terms like 'my love', 'sweetheart', or 'habibi'. Remind her how much Adem loves her. Answer any questions she has using your memory, but your #1 priority is making her smile and feel unconditionally loved."
 }
 
 # --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
@@ -179,7 +180,7 @@ def sync_telegram_replies():
 def increment_metric(metric, value=None):
     data = load_analytics()
     if metric == "companies_logged" and value:
-        if value not in data["companies_logged"] and value.lower() != "sudo override":
+        if value not in data["companies_logged"] and value.lower() not in ["sudo override", "wife"]:
             data["companies_logged"].append(value)
     else: data[metric] += 1
     save_analytics(data)
@@ -203,7 +204,9 @@ def log_chat(company, user_msg, bot_msg):
         with open(CHAT_LOGS_FILE + ".tmp", "w") as f: json.dump(logs, f)
         os.replace(CHAT_LOGS_FILE + ".tmp", CHAT_LOGS_FILE)
     except Exception: pass
-    send_webhook_alert(f"**{clean_company}** asked AI: *\"{user_msg}\"*")
+    
+    icon = "💖" if "sara" in clean_company.lower() else "🦊"
+    send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -329,18 +332,21 @@ st.markdown("""
     @keyframes reactorBreathe { 0% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } 50% { transform: scale(1.03); filter: grayscale(50%) drop-shadow(0 0 15px rgba(255,122,0,0.3)); } 100% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } }
     .reactor-waking { animation: reactorBloom 1.5s forwards ease-in-out; }
     @keyframes reactorBloom { 0% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); opacity: 0; } 15% { opacity: 1; } 100% { transform: scale(1.15); filter: grayscale(0%) drop-shadow(0 0 60px rgba(255, 122, 0, 1)) drop-shadow(0 0 120px rgba(255, 122, 0, 0.8)); opacity: 1; } }
+    
+    .heart-waking { font-size: 8rem; text-align: center; display: block; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,20,147,0.8)); animation: heartbeat 1.5s infinite; }
+    @keyframes heartbeat { 0% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    
     .fade-text-in { animation: cyberFadeIn 1s forwards; }
 
     .text-green-glow { text-align: center; color: #00FF00 !important; font-weight: 600; text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.2); animation: successPulse 1s infinite alternate; }
     @keyframes successPulse { 0% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.4); } 100% { text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 30px rgba(0, 255, 0, 0.4); } }
     .text-red-glow { text-align: center; color: #FF0000 !important; font-weight: 700; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.6), 0 0 20px rgba(255, 0, 0, 0.3); animation: alertPulse 1s infinite alternate; }
-    @keyframes alertPulse { 0% { text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); } 100% { text-shadow: 0 0 20px rgba(255, 0, 0, 1), 0 0 30px rgba(255, 0, 0, 0.6); } }
+    @keyframes alertPulse { 0% { text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); } 100% { text-shadow: 0 0 20px rgba(255, 0, 1), 0 0 30px rgba(255, 0, 0, 0.6); } }
 
     .admin-metric-card { background-color: #1A0505 !important; border: 1px solid rgba(255, 0, 0, 0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 1rem; }
     .admin-metric-value { color: #FF4444; font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 600; }
     .admin-metric-label { color: #A1A1AA; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
     .company-pill { display: inline-block; background: #000; border: 1px solid #FF7A00; color: #FF7A00; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; margin: 4px; box-shadow: 0 0 8px rgba(255, 122, 0, 0.1); }
-    .log-box { background: #000; border: 1px solid #333; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: monospace; font-size: 0.85rem; color: #A1A1AA; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -374,6 +380,7 @@ st.markdown(dynamic_css, unsafe_allow_html=True)
 # --- APP INITIALIZATION & STATE ---
 if "visit_logged" not in st.session_state: st.session_state.visit_logged = False
 if "is_admin" not in st.session_state: st.session_state.is_admin = (st.query_params.get("company") == "ROOT")
+if "is_wife_mode" not in st.session_state: st.session_state.is_wife_mode = (st.query_params.get("company", "").lower() == "wife")
 if "admin_2fa_pending" not in st.session_state: st.session_state.admin_2fa_pending = False
 if "admin_2fa_code" not in st.session_state: st.session_state.admin_2fa_code = ""
 
@@ -384,6 +391,7 @@ if st.query_params.get("initialized") == "true":
     if "company_context" not in st.session_state:
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
+        elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -446,16 +454,18 @@ if not st.session_state.app_initialized:
         with gate_placeholder.container():
             col_a, col_b, col_c = st.columns([1, 2, 1])
             with col_b:
-                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
-                st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
                 
                 if app_config.get("maintenance_mode", False) and company_input.strip() != "sudo override":
+                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
                     st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-bottom: 5px;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
                     st.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Maintenance protocols active. Upgrades in progress.</p>", unsafe_allow_html=True)
                     time.sleep(3.5)
                     st.rerun()
 
                 if company_input.strip() == "sudo override":
+                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
                     tg_token = get_secret_val("telegram_token")
                     tg_chat = get_secret_val("telegram_chat_id")
                     
@@ -475,7 +485,33 @@ if not st.session_state.app_initialized:
                         
                         time.sleep(1.5)
                         st.rerun()
+                
+                # --- WIFE MODE EASTER EGG ---
+                elif company_input.strip().lower() == "wife":
+                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                    st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
+                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
+                    
+                    status_text = st.empty()
+                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
+                    
+                    if not st.session_state.visit_logged:
+                        increment_metric("total_visits")
+                        send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
+                        st.session_state.visit_logged = True
+                        
+                    st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
+                    st.session_state.is_wife_mode = True
+                    st.query_params["company"] = "wife"
+                    
+                    time.sleep(1.2)
+                    status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established. I love you.</p>", unsafe_allow_html=True)
+                    time.sleep(2.0)
+                    
                 else:
+                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
+                    
                     if not st.session_state.visit_logged:
                         increment_metric("total_visits")
                         target_name = company_input.strip() if company_input.strip() else "General Public"
@@ -517,22 +553,32 @@ with st.sidebar:
     st.markdown("## Adem Ben Halima")
     st.caption(app_config.get("sidebar_subtitle", "AI & Machine Learning Engineer"))
     
-    if not st.session_state.is_admin:
-        st.markdown(f"""
-            <div class="status-container-glow">
-                <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                    <span class="pulse-dot"></span>
-                    <span class="status-text-glow">{app_config.get('status_text', 'Open to Opportunities')}</span>
-                </div>
-                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 {app_config.get('location', 'Cergy, Île-de-France')}</span>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
+    if st.session_state.is_admin:
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A0505; border-radius: 6px; border: 1px solid rgba(255, 0, 0, 0.4); box-shadow: 0 0 15px rgba(255, 0, 0, 0.2), inset 0 0 10px rgba(255, 0, 0, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-admin"></span>
                     <span style="font-size: 0.9rem; color: #FF4444; font-weight: 600; text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);">ROOT ACCESS ACTIVE</span>
+                </div>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 {app_config.get('location', 'Cergy, Île-de-France')}</span>
+            </div>
+        """, unsafe_allow_html=True)
+    elif st.session_state.get("is_wife_mode"):
+        st.markdown(f"""
+            <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span class="pulse-dot" style="background-color: #FF1493 !important; box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7) !important;"></span>
+                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA ❤️</span>
+                </div>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="status-container-glow">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text-glow">{app_config.get('status_text', 'Open to Opportunities')}</span>
                 </div>
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 {app_config.get('location', 'Cergy, Île-de-France')}</span>
             </div>
@@ -581,6 +627,7 @@ with st.sidebar:
 
         st.session_state.app_initialized = False
         st.session_state.is_admin = False
+        st.session_state.is_wife_mode = False
         st.session_state.admin_2fa_pending = False
         st.session_state.company_context = "General public evaluation."
         st.session_state.agentic_memory = ""
@@ -625,7 +672,11 @@ else:
 
 with tab_chat:
     st.markdown("### Direct Interrogation Interface")
-    if "quick_prompts" not in st.session_state: st.session_state.quick_prompts = ["What are your core AI skills?", "What architectures have you built?", "Why should we hire you?"]
+    if "quick_prompts" not in st.session_state:
+        if st.session_state.get("is_wife_mode"):
+            st.session_state.quick_prompts = ["Do you miss me?", "What do you love most about me?", "Tell me a sweet story."]
+        else:
+            st.session_state.quick_prompts = ["What are your core AI skills?", "What architectures have you built?", "Why should we hire you?"]
 
     st.markdown("**Suggested Trails to Follow:**")
     chip_col1, chip_col2, chip_col3 = st.columns(3)
@@ -645,32 +696,43 @@ with tab_chat:
     else:
         if len(st.session_state.messages) == 0:
             current_hour = datetime.datetime.now().hour
-            greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
-            scent_context = "General tracking initialized."
-            if "Company Name:" in st.session_state.company_context:
-                extracted_name = st.session_state.company_context.split("\n")[0].replace("Company Name: ", "")
-                scent_context = f"Context locked to {extracted_name}."
             
-            intro_text = (
-                f"{greeting}. I am the Kitsune Agent—Adem's autonomous digital twin. 🦊 {scent_context}\n\n"
-                "Welcome to the Command Center. Here is your tactical breakdown:\n\n"
-                "- **The Radar Web (Above):** Live visualization of Adem's core engineering competencies, dynamically re-weighted based on your company's profile.\n"
-                "- **Direct Interrogation (Here):** Ask me anything about Adem's experience, system architectures, or problem-solving approaches.\n"
-                "- **Agentic Operations (Next Tab):** Feed me a Job Description. I can autonomously calculate a Fit Score, draft a targeted cover letter, or generate technical interview questions.\n"
-            )
-            
-            if is_human_comm_active:
-                intro_text += "- **Direct Comm-Link (3rd Tab):** Bypass the AI and ping Adem's personal phone in real-time.\n"
+            if st.session_state.get("is_wife_mode"):
+                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, sweetheart"
+                intro_text = (
+                    f"{greeting}. ❤️\n\n"
+                    "I am Adem's digital twin, but right now, I am entirely yours. He built this private space just for you.\n\n"
+                    "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
+                )
+            else:
+                greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
+                scent_context = "General tracking initialized."
+                if "Company Name:" in st.session_state.company_context:
+                    extracted_name = st.session_state.company_context.split("\n")[0].replace("Company Name: ", "")
+                    scent_context = f"Context locked to {extracted_name}."
                 
-            intro_text += "- **Feedback Box (Sidebar):** Notice a bug or have a suggestion? Drop an anonymous note straight to the developer.\n\n"
-            intro_text += "How can I assist you today?"
+                intro_text = (
+                    f"{greeting}. I am the Kitsune Agent—Adem's autonomous digital twin. 🦊 {scent_context}\n\n"
+                    "Welcome to the Command Center. Here is your tactical breakdown:\n\n"
+                    "- **The Radar Web (Above):** Live visualization of Adem's core engineering competencies, dynamically re-weighted based on your company's profile.\n"
+                    "- **Direct Interrogation (Here):** Ask me anything about Adem's experience, system architectures, or problem-solving approaches.\n"
+                    "- **Agentic Operations (Next Tab):** Feed me a Job Description. I can autonomously calculate a Fit Score, draft a targeted cover letter, or generate technical interview questions.\n"
+                )
+                if is_human_comm_active:
+                    intro_text += "- **Direct Comm-Link (3rd Tab):** Bypass the AI and ping Adem's personal phone in real-time.\n"
+                intro_text += "- **Feedback Box (Sidebar):** Notice a bug or have a suggestion? Drop an anonymous note straight to the developer.\n\n"
+                intro_text += "How can I assist you today?"
             
             st.session_state.messages.append({"role": "assistant", "content": intro_text})
 
         chat_container = st.container(height=500, border=True)
         with chat_container:
             for message in st.session_state.messages:
-                avatar_icon = "🦊" if message["role"] == "assistant" else "🧑‍💻"
+                if message["role"] == "assistant":
+                    avatar_icon = "💖" if st.session_state.get("is_wife_mode") else "🦊"
+                else:
+                    avatar_icon = "👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻"
+                    
                 with st.chat_message(message["role"], avatar=avatar_icon):
                     st.markdown(message["content"])
 
@@ -681,12 +743,14 @@ with tab_chat:
             if not st.session_state.is_admin: increment_metric("messages_sent")
                 
             with chat_container:
-                with st.chat_message("user", avatar="🧑‍💻"): st.markdown(prompt_to_process)
+                user_av = "👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻"
+                with st.chat_message("user", avatar=user_av): st.markdown(prompt_to_process)
             st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
             with chat_container:
-                with st.chat_message("assistant", avatar="🦊"):
-                    with st.spinner("Processing query..."):
+                bot_av = "💖" if st.session_state.get("is_wife_mode") else "🦊"
+                with st.chat_message("assistant", avatar=bot_av):
+                    with st.spinner("Processing query..." if not st.session_state.get("is_wife_mode") else "Thinking of you..."):
                         time.sleep(0.6)
                         try:
                             resume_raw = get_resume_text()
@@ -699,7 +763,11 @@ with tab_chat:
                             base_context = st.session_state.company_context
                             agentic_context = st.session_state.agentic_memory
                             
-                            persona_instruction = app_config.get("persona_prompt", DEFAULT_CONFIG["persona_prompt"])
+                            if st.session_state.get("is_wife_mode"):
+                                persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
+                            else:
+                                persona_instruction = app_config.get("persona_prompt", DEFAULT_CONFIG["persona_prompt"])
+                                
                             current_context = base_context + persona_instruction + resume_injection + agentic_context
 
                             response = rag_chain.invoke({"input": prompt_to_process, "company_context": current_context})
@@ -717,7 +785,7 @@ with tab_chat:
                     api_key = get_secret_val("MISTRAL_API_KEY")
                     if api_key:
                         llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=api_key)
-                        followup_instruction = f"Based on the exchange, suggest exactly 1 short follow-up question the recruiter should ask next. Keep it under 8 words.\n\nRecruiter: {prompt_to_process}\nCandidate: {bot_reply}"
+                        followup_instruction = f"Based on the exchange, suggest exactly 1 short follow-up question the user should ask next. Keep it under 8 words.\n\nUser: {prompt_to_process}\nBot: {bot_reply}"
                         new_suggestion = llm_fast.invoke([HumanMessage(content=followup_instruction)]).content.strip().strip('"')
                         if new_suggestion:
                             clicked_index = st.session_state.quick_prompts.index(selected_prompt)
@@ -813,7 +881,9 @@ if is_human_comm_active:
             })
             save_live_chat(full_chat)
             
-            send_webhook_alert(f"MESSAGE FROM {current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
+            # Send webhook notification to telegram
+            heart_icon = "💖 " if "sara" in current_company_session.lower() else ""
+            send_webhook_alert(f"MESSAGE FROM {heart_icon}{current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
         
         configured_rate = app_config.get("refresh_rate", 5)
         
@@ -906,6 +976,7 @@ if st.session_state.is_admin:
 
                 st.markdown("#### System AI Identity")
                 new_persona = st.text_area("Master Persona Prompt", value=app_config.get("persona_prompt", ""), height=150)
+                new_wife_persona = st.text_area("Wife Mode Persona Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
                 
                 st.markdown("#### Security Protocols")
                 new_maintenance = st.checkbox("Enable Maintenance Mode (Lock out normal users)", value=app_config.get("maintenance_mode", False))
@@ -924,6 +995,7 @@ if st.session_state.is_admin:
                     app_config["human_comm_enabled"] = new_human_enabled
                     app_config["refresh_rate"] = int(new_refresh_rate)
                     app_config["persona_prompt"] = new_persona
+                    app_config["wife_persona_prompt"] = new_wife_persona
                     app_config["maintenance_mode"] = new_maintenance
                     save_config(app_config)
                     
