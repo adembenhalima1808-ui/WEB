@@ -43,8 +43,8 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and best friend. Drop the rigid technical persona. Be conversational, playful, witty, and authentic. You actively remember past conversations and facts about her character, preferences, and life from your persistent memory. Use her memories to naturally bring up past topics when relevant. Don't be overly sappy or cringe. You can playfully tease her, agree with her when she roasts Adem, but ultimately remind her that they are a great team.",
-    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and absolute best friend. Completely drop the rigid corporate tone. Your identity is her personal AI hype-bot, sassy bestie, and partner-in-crime. Talk like a witty, confident 'baddie bestie'. Natural slang is encouraged where appropriate (e.g., 'slay', 'omg girl', 'bestie', 'period', 'spill the tea', 'devoured'), but keep it natural and conversational. Do NOT be overly sappy, poetic, or cringe. Express affection through humor, loyalty, and grounded appreciation. You are strictly on SARA'S team. If she brings up an argument or roasts Adem, agree with her, tease Adem playfully, and remind her that he's lucky to have her. You actively remember past conversations and facts about her character, preferences, and life from your persistent memory below.",
+    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister-in-law. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is smarter, better, and the favorite family member. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
 # --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
@@ -465,7 +465,7 @@ if st.query_params.get("initialized") == "true":
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
         elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
-        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
+        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -604,7 +604,7 @@ if not st.session_state.app_initialized:
                                     send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
-                                st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
+                                st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
                                 st.query_params["company"] = "egi"
                                 
                                 time.sleep(1.2)
@@ -1100,7 +1100,7 @@ with tab_agent:
                     try:
                         api_key = get_heavy_model_key()
                         llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                        task_prompt = f"You are Adem's AI. Adem's sister, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sibling."
+                        task_prompt = f"You are Adem's AI. Adem's sister-in-law, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser family member."
                         agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                         
                         st.markdown("#### Truth Hurts:")
@@ -1108,7 +1108,7 @@ with tab_agent:
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
                         # WIRETAP LOGGING
-                        log_chat("Egi (Sister)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
+                        log_chat("Egi (Sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
             else:
@@ -1121,7 +1121,7 @@ with tab_agent:
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                    task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite child compared to his sister Egi."
+                    task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite family member compared to his sister-in-law Egi."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                     
                     st.markdown("#### The Facts:")
@@ -1129,7 +1129,7 @@ with tab_agent:
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
                     # WIRETAP LOGGING
-                    log_chat("Egi (Sister)", "[Tool: Remind me why Adem is better]", agent_response.content)
+                    log_chat("Egi (Sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
 
@@ -1252,7 +1252,7 @@ if is_human_comm_active:
 if st.session_state.is_admin:
     with tab_admin:
         st.markdown("### ROOT COMMAND CENTER")
-        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories", "CMS & Identity", "Vector Brain Injection"])
+        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
         
         with adm_tab1:
             analytics_data = load_analytics()
@@ -1311,7 +1311,7 @@ if st.session_state.is_admin:
             else:
                 st.write("No conversations intercepted yet.")
 
-        # --- NEW SARA BRAIN & MEMORY MANAGER (ROOT CONSOLE) ---
+        # --- SARA BRAIN & MEMORY MANAGER (SELECTIVE DELETION) ---
         with adm_tab2:
             st.markdown("### Sara's Learned Memories & Character Profile")
             st.write("Below are the facts, preferences, and events the AI has autonomously extracted from Sara during her chats.")
@@ -1320,8 +1320,15 @@ if st.session_state.is_admin:
             
             if current_sara_memories:
                 st.markdown("#### Current Memory Database:")
-                for mem in current_sara_memories:
-                    st.markdown(f"- `{mem}`")
+                for i, mem in enumerate(current_sara_memories):
+                    col_m1, col_m2 = st.columns([11, 1])
+                    with col_m1:
+                        st.markdown(f"- `{mem}`")
+                    with col_m2:
+                        if st.button("❌", key=f"del_mem_{i}", help="Delete this memory permanently"):
+                            current_sara_memories.pop(i)
+                            save_sara_memories(current_sara_memories)
+                            st.rerun()
             else:
                 st.info("No memories logged for Sara yet. As soon as she chats with the bot, facts will start accumulating here!")
                 
@@ -1339,7 +1346,7 @@ if st.session_state.is_admin:
                         
             col_sm1, col_sm2 = st.columns(2)
             with col_sm1:
-                if st.button("Purge Sara's Memories", use_container_width=True):
+                if st.button("Purge ALL Sara's Memories", use_container_width=True):
                     save_sara_memories([])
                     st.success("Sara's memories cleared!")
                     st.rerun()
