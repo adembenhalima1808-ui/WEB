@@ -4,9 +4,9 @@ from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from langchain_community.document_loaders import TextLoader
 from langchain_chroma import Chroma
 from langchain_text_splitters import CharacterTextSplitter
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains import create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate  # <-- Added missing import
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_retrieval_chain
+from langchain_core.prompts import ChatPromptTemplate
 
 @st.cache_resource(show_spinner=False)
 def initialize_rag_system():
@@ -51,7 +51,7 @@ def initialize_rag_system():
             ("human", "{input}"),
         ])
 
-        # Build Retrieval Chains
+        # Build Retrieval Chains via langchain-classic
         question_answer_chain = create_stuff_documents_chain(llm, prompt)
         rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
