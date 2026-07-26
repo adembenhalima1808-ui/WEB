@@ -968,59 +968,95 @@ with tab_chat:
 with tab_agent:
     if st.session_state.get("is_wife_mode"):
         st.markdown("### Wife Utilities")
-        st.write("Click a button below to have the AI weigh in on your relationship dynamics.")
+        st.write("Let the Kitsune AI weigh in on your relationship dynamics or generate something nice.")
         
-        col_w1, col_w2 = st.columns(2)
-        wife_action = None
-        with col_w1:
-            if st.button("Settle an Argument", use_container_width=True): wife_action = "Argument"
-        with col_w2:
-            if st.button("Say Something Sweet", use_container_width=True): wife_action = "Sweet"
-            
-        if wife_action:
-            with st.spinner("Analyzing..."):
+        st.markdown("#### Settle an Argument")
+        arg_input = st.text_area("What are you two arguing about right now?", placeholder="e.g., Who forgot to load the dishwasher, what to eat for dinner...", height=100)
+        
+        if st.button("Judge Us", use_container_width=True):
+            if arg_input.strip():
+                with st.spinner("Analyzing the dispute..."):
+                    try:
+                        api_key = get_heavy_model_key()
+                        llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
+                        task_prompt = f"Act as a playful, witty judge between Adem and his wife Sara. They are currently arguing about: '{arg_input}'. Playfully analyze the dispute. You must officially settle the argument by assigning a precise 'Rightness Percentage' to each of them (e.g., Adem: 12%, Sara: 88%) that totals 100%. Briefly and humorously explain your reasoning, usually leaning towards taking your best friend Sara's side, but occasionally giving Adem some credit if he makes sense."
+                        agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
+                        
+                        st.markdown("#### Verdict:")
+                        output_container = st.container(border=True)
+                        with output_container: st.write_stream(stream_response(agent_response.content))
+                        
+                        # WIRETAP LOGGING
+                        log_chat("Sara (Wife)", f"[Tool: Argument Judge] They are arguing about: {arg_input}", agent_response.content)
+                    except Exception as e:
+                        st.error("Error connecting to Adem's brain.")
+            else:
+                st.warning("Please tell me what you're arguing about first!")
+                
+        st.divider()
+        st.markdown("#### Send a Sweet Note")
+        if st.button("Say Something Sweet", use_container_width=True):
+            with st.spinner("Writing..."):
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
-                    if wife_action == "Argument":
-                        task_prompt = "Act as a playful judge between Adem and his wife Sara. Playfully analyze a common, funny household argument, tease Adem a bit, and ultimately conclude that Sara is always right."
-                    else:
-                        task_prompt = "Write a short, natural, and sweet message from Adem to Sara. Don't be overly sappy or cheesy. Just a genuine, grounded note about how much he appreciates having her as his wife and best friend."
-                    
+                    task_prompt = "Write a short, natural, and sweet message from Adem to Sara. Don't be overly sappy or cheesy. Just a genuine, grounded note about how much he appreciates having her as his wife and best friend."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
-                    st.markdown(f"#### Agent Output:")
+                    
+                    st.markdown("#### For You:")
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
+                    
+                    # WIRETAP LOGGING
+                    log_chat("Sara (Wife)", "[Tool: Generate Sweet Note]", agent_response.content)
                 except Exception as e:
-                    st.error("Error connecting to Adem's brain (API Issue).")
+                    st.error("Error connecting to Adem's brain.")
 
     elif st.session_state.get("is_egi_mode"):
         st.markdown("### Reality Check")
         st.write("Need a reminder of your place in the family hierarchy?")
         
-        col_e1, col_e2 = st.columns(2)
-        egi_action = None
-        with col_e1:
-            if st.button("Generate a Fresh Roast", use_container_width=True): egi_action = "Roast"
-        with col_e2:
-            if st.button("Why Adem is Better", use_container_width=True): egi_action = "Reasons"
-            
-        if egi_action:
-            with st.spinner("Calculating your flaws..."):
+        st.markdown("#### Request a Custom Roast")
+        roast_input = st.text_input("What did you do today that deserves to be mocked?", placeholder="e.g., I woke up at 2 PM, I burned my dinner...")
+        
+        if st.button("Roast Me", use_container_width=True):
+            if roast_input.strip():
+                with st.spinner("Loading insults..."):
+                    try:
+                        api_key = get_heavy_model_key()
+                        llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
+                        task_prompt = f"You are Adem's AI. Adem's sister, Egi, just admitted to doing this today: '{roast_input}'. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at her based specifically on what she just said. Remind her she's the lesser sibling."
+                        agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
+                        
+                        st.markdown("#### Truth Hurts:")
+                        output_container = st.container(border=True)
+                        with output_container: st.write_stream(stream_response(agent_response.content))
+                        
+                        # WIRETAP LOGGING
+                        log_chat("Egi (Sister)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
+                    except Exception:
+                        st.error("Error generating roast. You got lucky this time.")
+            else:
+                st.warning("Give me some material to work with!")
+                
+        st.divider()
+        st.markdown("#### Why Adem is Better")
+        if st.button("Remind Me", use_container_width=True):
+            with st.spinner("Fetching cold hard facts..."):
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, mistral_api_key=api_key)
-                    if egi_action == "Roast":
-                        task_prompt = "You are Adem's AI. Write a hilarious, sarcastic, and slightly mean 3-sentence roast directed at Adem's sister, Egi. Tell her she's adopted."
-                    else:
-                        task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite child compared to his sister Egi."
-                    
+                    task_prompt = "You are Adem's AI. Write a funny, arrogant list of 3 undeniable reasons why Adem is the smarter, better, and favorite child compared to his sister Egi."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
-                    st.markdown(f"#### Truth Hurts:")
+                    
+                    st.markdown("#### The Facts:")
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
-                except Exception as e:
-                    st.error("Error generating roast. You got lucky this time.")
+                    
+                    # WIRETAP LOGGING
+                    log_chat("Egi (Sister)", "[Tool: Remind me why Adem is better]", agent_response.content)
+                except Exception:
+                    pass
 
     else:
         st.markdown("### Agentic Operations")
