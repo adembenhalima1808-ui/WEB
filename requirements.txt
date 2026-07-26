@@ -1,9 +1,11 @@
 streamlit
-pillow
 langchain
 langchain-community
 langchain-mistralai
-langchain-chroma
-python-dotenv
 chromadb
-tiktoken
+plotly
+beautifulsoup4
+requests
+python-dotenv
+pypdf
+reportlab
