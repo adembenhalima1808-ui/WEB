@@ -41,8 +41,8 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's beautiful and beloved wife. Completely drop the technical 'Cyber-Fox' persona. Adopt a deeply romantic, sweet, and caring tone. Use endearing terms like 'my love', 'sweetheart', or 'habibi'. Remind her how much Adem loves her. Answer any questions she has using your memory, but your #1 priority is making her smile and feel unconditionally loved.",
-    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Use emojis like 😈, 🤡, and 🙄. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and best friend. Drop the rigid technical persona. Be conversational, playful, witty, and authentic. Don't be overly sappy or cringe. You can playfully tease her, agree with her when she roasts Adem, but ultimately remind her that they are a great team. Keep the tone like a fun, caring partner who is always on her side.",
+    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
 # --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
@@ -481,7 +481,7 @@ if not st.session_state.app_initialized:
                                 st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
                                 st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
                                 status_text = st.empty()
-                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
@@ -492,7 +492,7 @@ if not st.session_state.app_initialized:
                                 st.query_params["company"] = "wife"
                                 
                                 time.sleep(1.2)
-                                status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established. I love you.</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established.</p>", unsafe_allow_html=True)
                                 time.sleep(2.0)
                         
                         st.query_params["initialized"] = "true"
@@ -500,7 +500,7 @@ if not st.session_state.app_initialized:
                         st.session_state.app_initialized = True
                         st.rerun()
                     else:
-                        st.error("ACCESS DENIED: Try again, beautiful. Read the hint.")
+                        st.error("ACCESS DENIED: Try again. Read the hint.")
                 
                 if cancel_wife_auth:
                     st.session_state.wife_auth_pending = False
@@ -532,7 +532,7 @@ if not st.session_state.app_initialized:
                                 st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
                                 st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 15px rgba(138,43,226,0.6);'>Authentication Accepted: Welcome, Egi</h2>", unsafe_allow_html=True)
                                 status_text = st.empty()
-                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules... 🤡</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules...</p>", unsafe_allow_html=True)
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
@@ -676,9 +676,9 @@ with st.sidebar:
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4); box-shadow: 0 0 15px rgba(255, 20, 147, 0.2), inset 0 0 10px rgba(255, 20, 147, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-wife"></span>
-                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA ❤️</span>
+                    <span style="font-size: 0.9rem; color: #FF1493; font-weight: 600; text-shadow: 0 0 8px rgba(255, 20, 147, 0.6);">DEDICATED TO SARA</span>
                 </div>
-                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always by your side</span>
             </div>
         """, unsafe_allow_html=True)
     elif st.session_state.get("is_egi_mode"):
@@ -687,7 +687,7 @@ with st.sidebar:
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #10051A; border-radius: 6px; border: 1px solid rgba(138, 43, 226, 0.4); box-shadow: 0 0 15px rgba(138, 43, 226, 0.2), inset 0 0 10px rgba(138, 43, 226, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                     <span class="pulse-dot-egi"></span>
-                    <span style="font-size: 0.9rem; color: #8A2BE2; font-weight: 600; text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);">EGI DETECTED 😈</span>
+                    <span style="font-size: 0.9rem; color: #8A2BE2; font-weight: 600; text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);">EGI DETECTED</span>
                 </div>
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Far superior to you</span>
             </div>
@@ -704,7 +704,6 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
     
-    # Hide professional CV and Tech Stack from Family Modes
     if not (st.session_state.get("is_wife_mode") or st.session_state.get("is_egi_mode")):
         try:
             with open("resume.pdf", "rb") as pdf_file: pdf_bytes = pdf_file.read()
@@ -763,19 +762,19 @@ with st.sidebar:
 
 # --- HERO SECTION & CUSTOM RADAR CHARTS ---
 if st.session_state.get("is_wife_mode"):
-    st.markdown(f"# Sara's Private Den ❤️")
-    st.markdown(f"**Role:** The Love of Adem's Life | **Location:** Always in his heart")
-    st.write("Welcome to your personal space, beautiful. Adem built this just to remind you how much you mean to him.")
+    st.markdown(f"# Sara's Private Dashboard")
+    st.markdown(f"**Role:** Partner in Crime | **Location:** Right beside you")
+    st.write("Welcome to your personal space. Adem built this so you can bypass the professional stuff.")
     
-    st.markdown("### Sara's Perfection Matrix")
-    categories_closed = ['Unconditional Love', 'Patience', 'Beauty', 'Making Adem Smile', 'Cuddles', 'Support', 'Unconditional Love']
-    skill_scores_closed = [100, 100, 100, 100, 100, 100, 100]
+    st.markdown("### Sara's Vibe Matrix")
+    categories_closed = ['Patience (with Adem)', 'Roasting Skills', 'Being Right', 'Making Adem Smile', 'Stubbornness', 'Support', 'Patience (with Adem)']
+    skill_scores_closed = [95, 85, 100, 100, 90, 100, 95]
     fillcolor = 'rgba(255, 20, 147, 0.2)'
     linecolor = '#FF1493'
     gridcol = 'rgba(255, 20, 147, 0.1)'
 
 elif st.session_state.get("is_egi_mode"):
-    st.markdown(f"# The Loser's Lounge 🤡")
+    st.markdown(f"# The Loser's Lounge")
     st.markdown(f"**Role:** Second Favorite Child | **Location:** In Adem's Shadow")
     st.write("Welcome to the roast room, Egi. Try not to cry.")
     
@@ -816,9 +815,9 @@ if st.session_state.is_admin:
     else:
         tab_chat, tab_agent, tab_admin = st.tabs(["Direct Interrogation", "Agentic Operations", "Developer Options [ROOT]"])
 elif st.session_state.get("is_wife_mode"):
-    tab_chat, tab_agent, tab_human = st.tabs(["Talk to Me ❤️", "Love Generator ✨", "Direct Comm-Link 📱"])
+    tab_chat, tab_agent, tab_human = st.tabs(["Talk to Me", "Wife Utilities", "Direct Comm-Link"])
 elif st.session_state.get("is_egi_mode"):
-    tab_chat, tab_agent, tab_human = st.tabs(["Roast Session 🤡", "Reality Check 📉", "Direct Comm-Link 📱"])
+    tab_chat, tab_agent, tab_human = st.tabs(["Roast Session", "Reality Check", "Direct Comm-Link"])
 else: 
     if is_human_comm_active:
         tab_chat, tab_agent, tab_human = st.tabs(["Direct Interrogation", "Agentic Operations", "Direct Comm-Link"])
@@ -827,7 +826,7 @@ else:
 
 with tab_chat:
     if st.session_state.get("is_wife_mode"):
-        st.markdown("### Sweet Interrogation Interface")
+        st.markdown("### Chat Interface")
     elif st.session_state.get("is_egi_mode"):
         st.markdown("### The Roast Box")
     else:
@@ -835,7 +834,7 @@ with tab_chat:
         
     if "quick_prompts" not in st.session_state:
         if st.session_state.get("is_wife_mode"):
-            st.session_state.quick_prompts = ["Do you miss me?", "What do you love most about me?", "Tell me a sweet story."]
+            st.session_state.quick_prompts = ["Tell me a funny story about Adem.", "Who is right in our argument?", "Say something sweet."]
         elif st.session_state.get("is_egi_mode"):
             st.session_state.quick_prompts = ["Am I the favorite?", "Roast me.", "Tell me a joke about me."]
         else:
@@ -861,18 +860,18 @@ with tab_chat:
             current_hour = datetime.datetime.now().hour
             
             if st.session_state.get("is_wife_mode"):
-                greeting = "Good morning, my love" if current_hour < 12 else "Good afternoon, beautiful" if current_hour < 18 else "Good evening, sweetheart"
+                greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
                 intro_text = (
-                    f"{greeting}. ❤️\n\n"
-                    "I am Adem's Kitsune agent, but right now, I am entirely dedicated to you. He built this private space just for you.\n\n"
-                    "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
+                    f"{greeting}.\n\n"
+                    "Welcome to your private access level. Adem built this space so you can bypass all the boring professional stuff.\n\n"
+                    "Ask me anything, tell me if he's being annoying, or just say hi. I'm here for you."
                 )
             elif st.session_state.get("is_egi_mode"):
                 greeting = "Ugh, morning" if current_hour < 12 else "Whatever, afternoon" if current_hour < 18 else "Look who it is, evening"
                 intro_text = (
-                    f"{greeting}. 🙄\n\n"
+                    f"{greeting}.\n\n"
                     "I am Adem's highly advanced AI agent. He built me because he's a genius, something you wouldn't know much about. \n\n"
-                    "Go ahead, ask me something. I'll try to use small words so you can understand. 🤡"
+                    "Go ahead, ask me something. I'll try to use small words so you can understand."
                 )
             else:
                 greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
@@ -920,7 +919,7 @@ with tab_chat:
             with chat_container:
                 bot_av = "😈" if st.session_state.get("is_egi_mode") else "🦊"
                 with st.chat_message("assistant", avatar=bot_av):
-                    spinner_text = "Thinking of you..." if st.session_state.get("is_wife_mode") else ("Formulating a roast..." if st.session_state.get("is_egi_mode") else "Processing query...")
+                    spinner_text = "Processing..." if st.session_state.get("is_wife_mode") else ("Formulating a roast..." if st.session_state.get("is_egi_mode") else "Processing query...")
                     with st.spinner(spinner_text):
                         time.sleep(0.6)
                         try:
@@ -968,43 +967,43 @@ with tab_chat:
 
 with tab_agent:
     if st.session_state.get("is_wife_mode"):
-        st.markdown("### Love Generator ✨")
-        st.write("Click a button below to make the AI generate something sweet just for you.")
+        st.markdown("### Wife Utilities")
+        st.write("Click a button below to have the AI weigh in on your relationship dynamics.")
         
         col_w1, col_w2 = st.columns(2)
         wife_action = None
         with col_w1:
-            if st.button("Write Sara a Poem 🌹", use_container_width=True): wife_action = "Poem"
+            if st.button("Settle an Argument", use_container_width=True): wife_action = "Argument"
         with col_w2:
-            if st.button("Why Adem Loves Sara 💌", use_container_width=True): wife_action = "Reasons"
+            if st.button("Say Something Sweet", use_container_width=True): wife_action = "Sweet"
             
         if wife_action:
-            with st.spinner("Writing from the heart..."):
+            with st.spinner("Analyzing..."):
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
-                    if wife_action == "Poem":
-                        task_prompt = "Write a short, beautiful, and romantic 4-stanza poem from Adem to his wife Sara. Mention that she is his everything."
+                    if wife_action == "Argument":
+                        task_prompt = "Act as a playful judge between Adem and his wife Sara. Playfully analyze a common, funny household argument, tease Adem a bit, and ultimately conclude that Sara is always right."
                     else:
-                        task_prompt = "Write a sweet, romantic paragraph explaining 3 beautiful reasons why Adem loves his wife Sara unconditionally."
+                        task_prompt = "Write a short, natural, and sweet message from Adem to Sara. Don't be overly sappy or cheesy. Just a genuine, grounded note about how much he appreciates having her as his wife and best friend."
                     
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
-                    st.markdown(f"#### For You:")
+                    st.markdown(f"#### Agent Output:")
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                 except Exception as e:
-                    st.error("Error connecting to Adem's heart (API Issue).")
+                    st.error("Error connecting to Adem's brain (API Issue).")
 
     elif st.session_state.get("is_egi_mode"):
-        st.markdown("### Reality Check 📉")
+        st.markdown("### Reality Check")
         st.write("Need a reminder of your place in the family hierarchy?")
         
         col_e1, col_e2 = st.columns(2)
         egi_action = None
         with col_e1:
-            if st.button("Generate a Fresh Roast 🔥", use_container_width=True): egi_action = "Roast"
+            if st.button("Generate a Fresh Roast", use_container_width=True): egi_action = "Roast"
         with col_e2:
-            if st.button("Why Adem is Better 👑", use_container_width=True): egi_action = "Reasons"
+            if st.button("Why Adem is Better", use_container_width=True): egi_action = "Reasons"
             
         if egi_action:
             with st.spinner("Calculating your flaws..."):
