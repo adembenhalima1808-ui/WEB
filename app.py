@@ -41,7 +41,8 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's beautiful and beloved wife. Completely drop the technical 'Cyber-Fox' persona. Adopt a deeply romantic, sweet, and caring tone. Use endearing terms like 'my love', 'sweetheart', or 'habibi'. Remind her how much Adem loves her. Answer any questions she has using your memory, but your #1 priority is making her smile and feel unconditionally loved."
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's beautiful and beloved wife. Completely drop the technical 'Cyber-Fox' persona. Adopt a deeply romantic, sweet, and caring tone. Use endearing terms like 'my love', 'sweetheart', or 'habibi'. Remind her how much Adem loves her. Answer any questions she has using your memory, but your #1 priority is making her smile and feel unconditionally loved.",
+    "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Use emojis like 😈, 🤡, and 🙄. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
 # --- ATOMIC FILE OPERATIONS (CORRUPTION PREVENTION) ---
@@ -155,7 +156,7 @@ def sync_telegram_replies():
                                 if "MESSAGE FROM" in orig_text:
                                     try:
                                         target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
-                                        target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").strip()
+                                        target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").replace("😈", "").strip()
                                     except Exception: pass
                             
                             if target_company not in chat_data:
@@ -180,7 +181,7 @@ def sync_telegram_replies():
 def increment_metric(metric, value=None):
     data = load_analytics()
     if metric == "companies_logged" and value:
-        if value not in data["companies_logged"] and value.lower() not in ["sudo override", "wife"]:
+        if value not in data["companies_logged"] and value.lower() not in ["sudo override", "wife", "egi"]:
             data["companies_logged"].append(value)
     else: data[metric] += 1
     save_analytics(data)
@@ -205,7 +206,10 @@ def log_chat(company, user_msg, bot_msg):
         os.replace(CHAT_LOGS_FILE + ".tmp", CHAT_LOGS_FILE)
     except Exception: pass
     
-    icon = "💖" if "sara" in clean_company.lower() or "wife" in clean_company.lower() else "🦊"
+    if "egi" in clean_company.lower(): icon = "😈"
+    elif "sara" in clean_company.lower() or "wife" in clean_company.lower(): icon = "💖"
+    else: icon = "🦊"
+    
     send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
@@ -260,6 +264,7 @@ def extract_stack_from_resume(company_context):
 # --- CYBER-KITSUNE STYLING ---
 st.markdown("""
     <style>
+    /* Nuke the Streamlit default header, footer, and watermark */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -329,6 +334,9 @@ st.markdown("""
     @keyframes pulseWife { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 20, 147, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 20, 147, 0); } }
     .pulse-dot-wife { display: inline-block; width: 10px; height: 10px; background-color: #FF1493 !important; border-radius: 50%; animation: pulseWife 1.8s infinite; margin-right: 8px; }
 
+    @keyframes pulseEgi { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(138, 43, 226, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(138, 43, 226, 0); } }
+    .pulse-dot-egi { display: inline-block; width: 10px; height: 10px; background-color: #8A2BE2 !important; border-radius: 50%; animation: pulseEgi 1.8s infinite; margin-right: 8px; }
+
     .reactor-icon { font-size: 7rem; text-align: center; display: block; margin-bottom: 10px; }
     .reactor-sleeping { filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1)); animation: reactorBreathe 3s infinite ease-in-out; }
     @keyframes reactorBreathe { 0% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } 50% { transform: scale(1.03); filter: grayscale(50%) drop-shadow(0 0 15px rgba(255,122,0,0.3)); } 100% { transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); } }
@@ -338,6 +346,9 @@ st.markdown("""
     .heart-waking { font-size: 8rem; text-align: center; display: block; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,20,147,0.8)); animation: heartbeat 1.5s infinite; }
     @keyframes heartbeat { 0% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } 100% { transform: scale(1); } }
     
+    .devil-waking { font-size: 8rem; text-align: center; display: block; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(138, 43, 226,0.8)); animation: devilbreathe 2s infinite alternate ease-in-out; }
+    @keyframes devilbreathe { 0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(138, 43, 226,0.5)); } 100% { transform: scale(1.1); filter: drop-shadow(0 0 35px rgba(220, 20, 60,0.9)); } }
+
     .fade-text-in { animation: cyberFadeIn 1s forwards; }
 
     .text-green-glow { text-align: center; color: #00FF00 !important; font-weight: 600; text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.2); animation: successPulse 1s infinite alternate; }
@@ -383,9 +394,11 @@ st.markdown(dynamic_css, unsafe_allow_html=True)
 if "visit_logged" not in st.session_state: st.session_state.visit_logged = False
 if "is_admin" not in st.session_state: st.session_state.is_admin = (st.query_params.get("company") == "ROOT")
 if "is_wife_mode" not in st.session_state: st.session_state.is_wife_mode = (st.query_params.get("company", "").lower() == "wife")
+if "is_egi_mode" not in st.session_state: st.session_state.is_egi_mode = (st.query_params.get("company", "").lower() == "egi")
 if "admin_2fa_pending" not in st.session_state: st.session_state.admin_2fa_pending = False
 if "admin_2fa_code" not in st.session_state: st.session_state.admin_2fa_code = ""
 if "wife_auth_pending" not in st.session_state: st.session_state.wife_auth_pending = False
+if "egi_auth_pending" not in st.session_state: st.session_state.egi_auth_pending = False
 
 if st.query_params.get("initialized") == "true":
     st.session_state.app_initialized = True
@@ -395,6 +408,7 @@ if st.query_params.get("initialized") == "true":
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
         elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
+        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -402,7 +416,7 @@ if "app_initialized" not in st.session_state: st.session_state.app_initialized =
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA & WIFE MODE ---
+# --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA, WIFE MODE, & EGI MODE ---
 if not st.session_state.app_initialized:
     st.markdown("""<style>[data-testid="stSidebar"] { display: none !important; }</style>""", unsafe_allow_html=True)
     gate_placeholder = st.empty()
@@ -470,7 +484,6 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing heartbeats... ❤️</p>", unsafe_allow_html=True)
                                 
-                                # Webhook alert dispatched to Telegram
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
                                     send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
@@ -494,6 +507,57 @@ if not st.session_state.app_initialized:
                     st.session_state.wife_auth_pending = False
                     st.rerun()
 
+            elif st.session_state.egi_auth_pending:
+                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
+                st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 10px rgba(138,43,226,0.5);'>Vibe Check Required</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
+                
+                with st.form("egi_auth_form", clear_on_submit=True):
+                    egi_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
+                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1: submit_egi_auth = st.form_submit_button("Admit Defeat", use_container_width=True)
+                    with col_btn2: cancel_egi_auth = st.form_submit_button("Abort", use_container_width=True)
+                
+                if submit_egi_auth:
+                    if "adem" in egi_answer.lower():
+                        st.session_state.egi_auth_pending = False
+                        st.session_state.is_egi_mode = True
+                        
+                        gate_placeholder.empty()
+                        with gate_placeholder.container():
+                            col_a, col_b, col_c = st.columns([1, 2, 1])
+                            with col_b:
+                                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                                st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
+                                st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 15px rgba(138,43,226,0.6);'>Authentication Accepted: Welcome, Egi</h2>", unsafe_allow_html=True)
+                                status_text = st.empty()
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules... 🤡</p>", unsafe_allow_html=True)
+                                
+                                if not st.session_state.visit_logged:
+                                    increment_metric("total_visits")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
+                                    st.session_state.visit_logged = True
+                                    
+                                st.session_state.company_context = "Company Name: Egi (Sister)\nBackground: Adem's sister. Time to relentlessly roast her and remind her Adem is the favorite."
+                                st.query_params["company"] = "egi"
+                                
+                                time.sleep(1.2)
+                                status_text.markdown("<p style='text-align: center; color: #8A2BE2; font-weight: bold;'>Link Established. Prepare to be roasted.</p>", unsafe_allow_html=True)
+                                time.sleep(2.0)
+                        
+                        st.query_params["initialized"] = "true"
+                        st.session_state.session_start_time = time.time()
+                        st.session_state.app_initialized = True
+                        st.rerun()
+                    else:
+                        st.error("ACCESS DENIED: Wrong. Say his name.")
+                
+                if cancel_egi_auth:
+                    st.session_state.egi_auth_pending = False
+                    st.rerun()
+
             else:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='reactor-icon reactor-sleeping'>🦊</span>", unsafe_allow_html=True)
@@ -505,7 +569,7 @@ if not st.session_state.app_initialized:
                     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                     submitted = st.form_submit_button("Wake Agent", use_container_width=True)
 
-    if 'submitted' in locals() and submitted and not (st.session_state.admin_2fa_pending or st.session_state.wife_auth_pending):
+    if 'submitted' in locals() and submitted and not (st.session_state.admin_2fa_pending or st.session_state.wife_auth_pending or st.session_state.egi_auth_pending):
         gate_placeholder.empty()
         with gate_placeholder.container():
             col_a, col_b, col_c = st.columns([1, 2, 1])
@@ -543,9 +607,13 @@ if not st.session_state.app_initialized:
                         st.rerun()
                 
                 elif company_input.strip().lower() == "wife":
-                    # Dispatches Telegram alert immediately when she enters "wife" at the gate
                     send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
                     st.session_state.wife_auth_pending = True
+                    st.rerun()
+                    
+                elif company_input.strip().lower() == "egi":
+                    send_webhook_alert("😈 **EGI MODE ATTEMPTED**: Sibling verification triggered...")
+                    st.session_state.egi_auth_pending = True
                     st.rerun()
                     
                 else:
@@ -613,6 +681,16 @@ with st.sidebar:
                 <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always in my heart</span>
             </div>
         """, unsafe_allow_html=True)
+    elif st.session_state.get("is_egi_mode"):
+        st.markdown(f"""
+            <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #10051A; border-radius: 6px; border: 1px solid rgba(138, 43, 226, 0.4); box-shadow: 0 0 15px rgba(138, 43, 226, 0.2), inset 0 0 10px rgba(138, 43, 226, 0.1);">
+                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                    <span class="pulse-dot-egi"></span>
+                    <span style="font-size: 0.9rem; color: #8A2BE2; font-weight: 600; text-shadow: 0 0 8px rgba(138, 43, 226, 0.6);">EGI DETECTED 😈</span>
+                </div>
+                <span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 In Adem's shadow</span>
+            </div>
+        """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
             <div class="status-container-glow">
@@ -668,7 +746,9 @@ with st.sidebar:
         st.session_state.app_initialized = False
         st.session_state.is_admin = False
         st.session_state.is_wife_mode = False
+        st.session_state.is_egi_mode = False
         st.session_state.wife_auth_pending = False
+        st.session_state.egi_auth_pending = False
         st.session_state.admin_2fa_pending = False
         st.session_state.company_context = "General public evaluation."
         st.session_state.agentic_memory = ""
@@ -716,6 +796,8 @@ with tab_chat:
     if "quick_prompts" not in st.session_state:
         if st.session_state.get("is_wife_mode"):
             st.session_state.quick_prompts = ["Do you miss me?", "What do you love most about me?", "Tell me a sweet story."]
+        elif st.session_state.get("is_egi_mode"):
+            st.session_state.quick_prompts = ["Am I the favorite?", "Roast me.", "Tell me a joke about me."]
         else:
             st.session_state.quick_prompts = ["What are your core AI skills?", "What architectures have you built?", "Why should we hire you?"]
 
@@ -745,6 +827,13 @@ with tab_chat:
                     "I am Adem's Kitsune agent, but right now, I am entirely dedicated to you. He built this private space just for you.\n\n"
                     "You can ask me anything about him, his work, or just talk to me. I'm here to remind you how much you mean to him."
                 )
+            elif st.session_state.get("is_egi_mode"):
+                greeting = "Ugh, morning" if current_hour < 12 else "Whatever, afternoon" if current_hour < 18 else "Look who it is, evening"
+                intro_text = (
+                    f"{greeting}. 🙄\n\n"
+                    "I am Adem's highly advanced AI agent. He built me because he's a genius, something you wouldn't know much about. \n\n"
+                    "Go ahead, ask me something. I'll try to use small words so you can understand. 🤡"
+                )
             else:
                 greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
                 scent_context = "General tracking initialized."
@@ -770,9 +859,9 @@ with tab_chat:
         with chat_container:
             for message in st.session_state.messages:
                 if message["role"] == "assistant":
-                    avatar_icon = "🦊"
+                    avatar_icon = "😈" if st.session_state.get("is_egi_mode") else "🦊"
                 else:
-                    avatar_icon = "👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻"
+                    avatar_icon = "🤡" if st.session_state.get("is_egi_mode") else ("👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻")
                     
                 with st.chat_message(message["role"], avatar=avatar_icon):
                     st.markdown(message["content"])
@@ -784,14 +873,15 @@ with tab_chat:
             if not st.session_state.is_admin: increment_metric("messages_sent")
                 
             with chat_container:
-                user_av = "👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻"
+                user_av = "🤡" if st.session_state.get("is_egi_mode") else ("👩‍💻" if st.session_state.get("is_wife_mode") else "🧑‍💻")
                 with st.chat_message("user", avatar=user_av): st.markdown(prompt_to_process)
             st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
             with chat_container:
-                bot_av = "🦊"
+                bot_av = "😈" if st.session_state.get("is_egi_mode") else "🦊"
                 with st.chat_message("assistant", avatar=bot_av):
-                    with st.spinner("Processing query..." if not st.session_state.get("is_wife_mode") else "Thinking of you..."):
+                    spinner_text = "Thinking of you..." if st.session_state.get("is_wife_mode") else ("Formulating a roast..." if st.session_state.get("is_egi_mode") else "Processing query...")
+                    with st.spinner(spinner_text):
                         time.sleep(0.6)
                         try:
                             resume_raw = get_resume_text()
@@ -806,6 +896,8 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
+                            elif st.session_state.get("is_egi_mode"):
+                                persona_instruction = app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"])
                             else:
                                 persona_instruction = app_config.get("persona_prompt", DEFAULT_CONFIG["persona_prompt"])
                                 
@@ -922,8 +1014,11 @@ if is_human_comm_active:
             })
             save_live_chat(full_chat)
             
-            heart_icon = "💖 " if "sara" in current_company_session.lower() or "wife" in current_company_session.lower() else ""
-            send_webhook_alert(f"MESSAGE FROM {heart_icon}{current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
+            if "egi" in current_company_session.lower(): prefix = "😈 "
+            elif "sara" in current_company_session.lower() or "wife" in current_company_session.lower(): prefix = "💖 "
+            else: prefix = ""
+                
+            send_webhook_alert(f"MESSAGE FROM {prefix}{current_company_session}:\n{new_human_msg}\n\n(Swipe to reply directly to this message to answer them)")
         
         configured_rate = app_config.get("refresh_rate", 5)
         
@@ -986,12 +1081,20 @@ if st.session_state.is_admin:
                     grouped_logs[comp].append(log)
                 
                 for comp, logs in grouped_logs.items():
-                    expander_label = f"Intercepted Comms: 💖 {comp}" if "sara" in comp.lower() or "wife" in comp.lower() else f"Intercepted Comms: {comp}"
+                    if "sara" in comp.lower() or "wife" in comp.lower():
+                        expander_label = f"Intercepted Comms: 💖 {comp}"
+                        user_color = "#FF1493"
+                    elif "egi" in comp.lower():
+                        expander_label = f"Intercepted Comms: 😈 {comp}"
+                        user_color = "#8A2BE2"
+                    else:
+                        expander_label = f"Intercepted Comms: {comp}"
+                        user_color = "#FF7A00"
+                        
                     with st.expander(f"{expander_label} ({len(logs)} messages)"):
                         log_container = st.container(height=350, border=False)
                         with log_container:
                             for log in logs:
-                                user_color = "#FF1493" if "sara" in comp.lower() or "wife" in comp.lower() else "#FF7A00"
                                 st.markdown(f"""
                                 <div style="background: #000; border: 1px solid #333; padding: 12px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #E4E4E7;">
                                     <div style="color: #A1A1AA; font-size: 0.75rem; margin-bottom: 6px;">{log['timestamp']}</div>
@@ -1025,7 +1128,10 @@ if st.session_state.is_admin:
 
                 st.markdown("#### System AI Identity")
                 new_persona = st.text_area("Master Persona Prompt", value=app_config.get("persona_prompt", ""), height=150)
-                new_wife_persona = st.text_area("Wife Mode Persona Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
+                
+                st.markdown("#### Hidden Mode Prompts")
+                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=100)
+                new_egi_persona = st.text_area("Egi Mode Prompt (Trigger: 'egi')", value=app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"]), height=100)
                 
                 st.markdown("#### Security Protocols")
                 new_maintenance = st.checkbox("Enable Maintenance Mode (Lock out normal users)", value=app_config.get("maintenance_mode", False))
@@ -1045,6 +1151,7 @@ if st.session_state.is_admin:
                     app_config["refresh_rate"] = int(new_refresh_rate)
                     app_config["persona_prompt"] = new_persona
                     app_config["wife_persona_prompt"] = new_wife_persona
+                    app_config["egi_persona_prompt"] = new_egi_persona
                     app_config["maintenance_mode"] = new_maintenance
                     save_config(app_config)
                     
