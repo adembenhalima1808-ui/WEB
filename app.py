@@ -27,6 +27,8 @@ ANALYTICS_FILE = "analytics.json"
 CONFIG_FILE = "config.json"
 CHAT_LOGS_FILE = "chat_logs.json"
 LIVE_CHAT_FILE = "live_chat.json"
+SARA_HISTORY_FILE = "sara_history.json"
+SARA_MEMORY_FILE = "sara_memory.json"
 
 DEFAULT_CONFIG = {
     "title": "Cyber-Kitsune Architecture",
@@ -41,7 +43,7 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and best friend. Drop the rigid technical persona. Be conversational, playful, witty, and authentic. Don't be overly sappy or cringe. You can playfully tease her, agree with her when she roasts Adem, but ultimately remind her that they are a great team. Keep the tone like a fun, caring partner who is always on her side.",
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and best friend. Drop the rigid technical persona. Be conversational, playful, witty, and authentic. You actively remember past conversations and facts about her character, preferences, and life from your persistent memory. Use her memories to naturally bring up past topics when relevant. Don't be overly sappy or cringe. You can playfully tease her, agree with her when she roasts Adem, but ultimately remind her that they are a great team.",
     "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is the smarter, better, and favorite sibling. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
@@ -89,9 +91,65 @@ def save_live_chat(data):
         os.replace(LIVE_CHAT_FILE + ".tmp", LIVE_CHAT_FILE)
     except Exception: pass
 
+# --- SARA PERSISTENT CHAT & MEMORY ENGINE ---
+def load_sara_history():
+    if not os.path.exists(SARA_HISTORY_FILE): return []
+    try:
+        with open(SARA_HISTORY_FILE, "r") as f: return json.load(f)
+    except Exception: return []
+
+def save_sara_history(messages):
+    try:
+        with open(SARA_HISTORY_FILE + ".tmp", "w") as f: json.dump(messages, f)
+        os.replace(SARA_HISTORY_FILE + ".tmp", SARA_HISTORY_FILE)
+    except Exception: pass
+
+def load_sara_memories():
+    if not os.path.exists(SARA_MEMORY_FILE): return []
+    try:
+        with open(SARA_MEMORY_FILE, "r") as f: return json.load(f)
+    except Exception: return []
+
+def save_sara_memories(memories):
+    try:
+        with open(SARA_MEMORY_FILE + ".tmp", "w") as f: json.dump(memories, f)
+        os.replace(SARA_MEMORY_FILE + ".tmp", SARA_MEMORY_FILE)
+    except Exception: pass
+
+def extract_and_store_sara_memories(user_msg, bot_msg):
+    """Background AI Task: Evaluates conversation to extract facts & memories about Sara."""
+    try:
+        api_key = get_secret_val("MISTRAL_API_KEY") or get_heavy_model_key()
+        if not api_key: return
+        
+        llm_mem = ChatMistralAI(model="mistral-small-latest", temperature=0.2, mistral_api_key=api_key)
+        existing_mems = load_sara_memories()
+        
+        prompt = f"""
+        You are a memory extraction unit analyzing a chat with Sara (Adem's wife).
+        
+        Current Known Memories about Sara:
+        {json.dumps(existing_mems, indent=2)}
+        
+        Latest Exchange:
+        Sara: "{user_msg}"
+        AI: "{bot_msg}"
+        
+        Extract 1 single short, concrete fact, preference, character trait, or recent event mentioned by Sara (e.g. "Sara loves oat milk lattes", "Sara went shopping today", "Sara prefers comedies over action movies").
+        If no new meaningful personal fact or event is revealed in her message, output ONLY the string 'NONE'. Do not repeat facts already known.
+        Output ONLY the fact string or 'NONE'.
+        """
+        response = llm_mem.invoke([HumanMessage(content=prompt)]).content.strip()
+        
+        if response and response.upper() != "NONE" and len(response) > 5:
+            if response not in existing_mems:
+                existing_mems.append(f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {response}")
+                save_sara_memories(existing_mems)
+    except Exception:
+        pass
+
 app_config = load_config()
 
-# Securely fetch keys strictly from Streamlit Secrets or Environment Variables (.env)
 def get_secret_val(key_name, default=""):
     try:
         if key_name.upper() in st.secrets:
@@ -413,7 +471,13 @@ if st.query_params.get("initialized") == "true":
             
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
-if "messages" not in st.session_state: st.session_state.messages = []
+
+# Load persistent messages for Sara, or initialize empty list for general visitors
+if "messages" not in st.session_state: 
+    if st.session_state.get("is_wife_mode"):
+        st.session_state.messages = load_sara_history()
+    else:
+        st.session_state.messages = []
 
 # --- THE CYBER-GATE LOCK SCREEN WITH STRICT TELEGRAM 2FA, WIFE MODE, & EGI MODE ---
 if not st.session_state.app_initialized:
@@ -472,6 +536,7 @@ if not st.session_state.app_initialized:
                     if "everything" in wife_answer.lower():
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
+                        st.session_state.messages = load_sara_history() # Persistent memory load
                         
                         gate_placeholder.empty()
                         with gate_placeholder.container():
@@ -481,7 +546,7 @@ if not st.session_state.app_initialized:
                                 st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
                                 st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
                                 status_text = st.empty()
-                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Loading long-term memories...</p>", unsafe_allow_html=True)
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
@@ -569,8 +634,6 @@ if not st.session_state.app_initialized:
                     submitted = st.form_submit_button("Wake Agent", use_container_width=True)
 
     if 'submitted' in locals() and submitted and not (st.session_state.admin_2fa_pending or st.session_state.wife_auth_pending or st.session_state.egi_auth_pending):
-        
-        # --- ATOMIC DISPATCH FOR ALL LOGIN TYPES ---
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
@@ -598,7 +661,6 @@ if not st.session_state.app_initialized:
                 st.rerun()
                 
         else:
-            # NORMAL PUBLIC / RECRUITER VISITOR DISPATCH
             target_name = clean_input if clean_input else "General Public"
             send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
             
@@ -829,7 +891,7 @@ with tab_chat:
         
     if "quick_prompts" not in st.session_state:
         if st.session_state.get("is_wife_mode"):
-            st.session_state.quick_prompts = ["Tell me a funny story about Adem.", "Who is right in our argument?", "Say something sweet."]
+            st.session_state.quick_prompts = ["Tell me a funny story about Adem.", "Who is right in our argument?", "What do you remember about me?"]
         elif st.session_state.get("is_egi_mode"):
             st.session_state.quick_prompts = ["Am I the favorite?", "Roast me.", "Tell me a joke about me."]
         else:
@@ -857,9 +919,9 @@ with tab_chat:
             if st.session_state.get("is_wife_mode"):
                 greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
                 intro_text = (
-                    f"{greeting}.\n\n"
-                    "Welcome to your private access level. Adem built this space so you can bypass all the boring professional stuff.\n\n"
-                    "Ask me anything, tell me if he's being annoying, or just say hi. I'm here for you."
+                    f"{greeting}, Sara.\n\n"
+                    "Welcome back to your private access level. I remember everything we talk about, so feel free to pick up where we left off.\n\n"
+                    "Ask me anything, tell me if Adem's being annoying, or just say hi. What's on your mind?"
                 )
             elif st.session_state.get("is_egi_mode"):
                 greeting = "Ugh, morning" if current_hour < 12 else "Whatever, afternoon" if current_hour < 18 else "Look who it is, evening"
@@ -914,7 +976,7 @@ with tab_chat:
             with chat_container:
                 bot_av = "😈" if st.session_state.get("is_egi_mode") else "🦊"
                 with st.chat_message("assistant", avatar=bot_av):
-                    spinner_text = "Processing..." if st.session_state.get("is_wife_mode") else ("Formulating a roast..." if st.session_state.get("is_egi_mode") else "Processing query...")
+                    spinner_text = "Recalling past memories..." if st.session_state.get("is_wife_mode") else ("Formulating a roast..." if st.session_state.get("is_egi_mode") else "Processing query...")
                     with st.spinner(spinner_text):
                         time.sleep(0.6)
                         try:
@@ -930,6 +992,10 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
+                                # INJECT PERSISTENT SARA MEMORIES INTO CONTEXT
+                                sara_memories = load_sara_memories()
+                                memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
+                                persona_instruction += memory_injection
                             elif st.session_state.get("is_egi_mode"):
                                 persona_instruction = app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"])
                             else:
@@ -945,6 +1011,12 @@ with tab_chat:
                     st.write_stream(stream_response(bot_reply))
                     
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+            
+            # Persistent memory operations for Sara
+            if st.session_state.get("is_wife_mode"):
+                save_sara_history(st.session_state.messages)
+                extract_and_store_sara_memories(prompt_to_process, bot_reply)
+                
             if not st.session_state.is_admin: log_chat(current_company, prompt_to_process, bot_reply)
 
             if selected_prompt in st.session_state.quick_prompts:
@@ -974,7 +1046,11 @@ with tab_agent:
                     try:
                         api_key = get_heavy_model_key()
                         llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
-                        task_prompt = f"Act as a playful, witty judge between Adem and his wife Sara. They are currently arguing about: '{arg_input}'. Playfully analyze the dispute. You must officially settle the argument by assigning a precise 'Rightness Percentage' to each of them (e.g., Adem: 12%, Sara: 88%) that totals 100%. Briefly and humorously explain your reasoning, usually leaning towards taking your best friend Sara's side, but occasionally giving Adem some credit if he makes sense."
+                        
+                        sara_mems = load_sara_memories()
+                        mem_context = "\nKnown facts about Sara: " + ", ".join(sara_mems[-5:]) if sara_mems else ""
+                        
+                        task_prompt = f"Act as a playful, witty judge between Adem and his wife Sara.{mem_context} They are currently arguing about: '{arg_input}'. Playfully analyze the dispute. You must officially settle the argument by assigning a precise 'Rightness Percentage' to each of them (e.g., Adem: 12%, Sara: 88%) that totals 100%. Briefly and humorously explain your reasoning, usually leaning towards taking your best friend Sara's side, but occasionally giving Adem some credit if he makes sense."
                         agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                         
                         st.markdown("#### Verdict:")
@@ -995,7 +1071,11 @@ with tab_agent:
                 try:
                     api_key = get_heavy_model_key()
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=api_key)
-                    task_prompt = "Write a short, natural, and sweet message from Adem to Sara. Don't be overly sappy or cheesy. Just a genuine, grounded note about how much he appreciates having her as his wife and best friend."
+                    
+                    sara_mems = load_sara_memories()
+                    mem_context = "\nIncorporate her preferences if relevant: " + ", ".join(sara_mems[-5:]) if sara_mems else ""
+                    
+                    task_prompt = f"Write a short, natural, and sweet message from Adem to Sara.{mem_context} Don't be overly sappy or cheesy. Just a genuine, grounded note about how much he appreciates having her as his wife and best friend."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                     
                     st.markdown("#### For You:")
@@ -1172,7 +1252,7 @@ if is_human_comm_active:
 if st.session_state.is_admin:
     with tab_admin:
         st.markdown("### ROOT COMMAND CENTER")
-        adm_tab1, adm_tab2, adm_tab3 = st.tabs(["Telemetry & Wiretap", "CMS & Identity", "Vector Brain Injection"])
+        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
         
         with adm_tab1:
             analytics_data = load_analytics()
@@ -1188,7 +1268,6 @@ if st.session_state.is_admin:
 
             st.markdown("---")
             
-            # Header with Wiretap refresh button
             col_wire1, col_wire2 = st.columns([3, 1])
             with col_wire1:
                 st.markdown("#### Live Chat Wiretap Logs (AI Bot)")
@@ -1232,7 +1311,45 @@ if st.session_state.is_admin:
             else:
                 st.write("No conversations intercepted yet.")
 
+        # --- NEW SARA BRAIN & MEMORY MANAGER (ROOT CONSOLE) ---
         with adm_tab2:
+            st.markdown("### Sara's Learned Memories & Character Profile")
+            st.write("Below are the facts, preferences, and events the AI has autonomously extracted from Sara during her chats.")
+            
+            current_sara_memories = load_sara_memories()
+            
+            if current_sara_memories:
+                st.markdown("#### Current Memory Database:")
+                for mem in current_sara_memories:
+                    st.markdown(f"- `{mem}`")
+            else:
+                st.info("No memories logged for Sara yet. As soon as she chats with the bot, facts will start accumulating here!")
+                
+            st.divider()
+            st.markdown("#### Inject Manual Memory:")
+            with st.form("add_sara_mem_form", clear_on_submit=True):
+                new_mem_input = st.text_input("New Memory / Fact about Sara", placeholder="e.g. Sara's favorite flowers are peonies...")
+                if st.form_submit_button("Inject to Sara's Memory"):
+                    if new_mem_input.strip():
+                        current_sara_memories.append(f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] (Manual) {new_mem_input.strip()}")
+                        save_sara_memories(current_sara_memories)
+                        st.success("Memory injected!")
+                        time.sleep(1)
+                        st.rerun()
+                        
+            col_sm1, col_sm2 = st.columns(2)
+            with col_sm1:
+                if st.button("Purge Sara's Memories", use_container_width=True):
+                    save_sara_memories([])
+                    st.success("Sara's memories cleared!")
+                    st.rerun()
+            with col_sm2:
+                if st.button("Wipe Sara's Persistent Chat Logs", use_container_width=True):
+                    save_sara_history([])
+                    st.success("Sara's chat history wiped!")
+                    st.rerun()
+
+        with adm_tab3:
             st.info("🔒 **Security Enforcement Active:** API keys and Webhook credentials are hard-locked to Streamlit Secrets / Environment Variables and cannot be modified or leaked via this UI.")
             
             with st.form("config_form"):
@@ -1300,7 +1417,7 @@ if st.session_state.is_admin:
                     save_live_chat({})
                     st.success("Human Comm-Link history purged.")
 
-        with adm_tab3:
+        with adm_tab4:
             st.markdown("### Bulk Vector Upload")
             st.write("Upload raw text files to permanently expand Kitsune's RAG architecture. This text will be appended directly into `my_brain.txt`.")
             new_knowledge = st.file_uploader("Select .txt file to append", type=["txt"])
