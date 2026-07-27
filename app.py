@@ -3,8 +3,6 @@ import datetime
 import json
 import os
 import random
-import re
-import subprocess
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -14,15 +12,6 @@ import plotly.graph_objects as go
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import HumanMessage
-
-# ==========================================
-# 🛡️ AGGRESSIVE OS PROXY PURGE
-# This fixes the "unknown url type: [https>" error
-# by forcing Python to ignore corrupted Windows/OS proxies.
-# ==========================================
-for proxy_env in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
-    if proxy_env in os.environ:
-        del os.environ[proxy_env]
 
 # Import the RAG Engine
 from core.rag_engine import initialize_rag_system
@@ -102,7 +91,7 @@ def save_live_chat(data):
         os.replace(LIVE_CHAT_FILE + ".tmp", LIVE_CHAT_FILE)
     except Exception: pass
 
-# --- SARA PERSISTENT CHAT & SMART MEMORY ENGINE ---
+# --- SARA PERSISTENT CHAT & MEMORY ENGINE ---
 def load_sara_history():
     if not os.path.exists(SARA_HISTORY_FILE): return []
     try:
@@ -128,165 +117,69 @@ def save_sara_memories(memories):
     except Exception: pass
 
 def extract_and_store_sara_memories(user_msg, bot_msg):
+    """Background AI Task: Evaluates conversation to extract facts & memories about Sara."""
     try:
         api_key = get_secret_val("MISTRAL_API_KEY") or get_heavy_model_key()
         if not api_key: return
         
-        llm_mem = ChatMistralAI(model="mistral-small-latest", temperature=0.1, mistral_api_key=api_key)
+        llm_mem = ChatMistralAI(model="mistral-small-latest", temperature=0.2, mistral_api_key=api_key)
         existing_mems = load_sara_memories()
         
         prompt = f"""
-        You are an advanced, autonomous memory manager for Adem's wife, Sara.
-        Your job is to read her latest message and accurately update her persistent memory database.
+        You are a memory extraction unit analyzing a chat with Sara (Adem's wife).
         
-        Current Database of Known Facts:
+        Current Known Memories about Sara:
         {json.dumps(existing_mems, indent=2)}
         
         Latest Exchange:
         Sara: "{user_msg}"
         AI: "{bot_msg}"
         
-        CRITICAL INSTRUCTIONS:
-        1. If Sara explicitly states a new persistent fact, preference, or trait about herself, extract it concisely.
-        2. If she explicitly CONTRADICTS an old memory (e.g., changes her mind, says she no longer likes something, corrects a fact), you MUST identify the exact old string to be removed.
-        3. Output ONLY a valid, raw JSON object representing your actions. Do NOT output markdown, backticks, or any conversational text.
-        
-        Expected JSON Format:
-        {{
-            "add": ["Concise fact 1", "Concise fact 2"], 
-            "remove": ["Exact string of old memory to delete"]
-        }}
-        
-        If nothing needs updating, output: {{"add": [], "remove": []}}
+        Extract 1 single short, concrete fact, preference, character trait, or recent event mentioned by Sara (e.g. "Sara loves oat milk lattes", "Sara went shopping today", "Sara prefers comedies over action movies").
+        If no new meaningful personal fact or event is revealed in her message, output ONLY the string 'NONE'. Do not repeat facts already known.
+        Output ONLY the fact string or 'NONE'.
         """
         response = llm_mem.invoke([HumanMessage(content=prompt)]).content.strip()
         
-        if response.startswith("```json"): response = response[7:]
-        if response.startswith("```"): response = response[3:]
-        if response.endswith("```"): response = response[:-3]
-        response = response.strip()
-        
-        data = json.loads(response)
-        updated = False
-        
-        for mem_to_remove in data.get("remove", []):
-            if mem_to_remove in existing_mems:
-                existing_mems.remove(mem_to_remove)
-                updated = True
-                
-        for mem_to_add in data.get("add", []):
-            new_mem = f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {mem_to_add}"
-            if not any(mem_to_add in m for m in existing_mems):
-                existing_mems.append(new_mem)
-                updated = True
-                
-        if updated:
-            save_sara_memories(existing_mems)
-            
+        if response and response.upper() != "NONE" and len(response) > 5:
+            if response not in existing_mems:
+                existing_mems.append(f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {response}")
+                save_sara_memories(existing_mems)
     except Exception:
         pass
 
 app_config = load_config()
 
 def get_secret_val(key_name, default=""):
-    val = default
     try:
         if key_name.upper() in st.secrets:
-            val = str(st.secrets[key_name.upper()])
-        elif key_name.lower() in st.secrets:
-            val = str(st.secrets[key_name.lower()])
-        else:
-            val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
-    except Exception: 
-        val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
-        
-    if val:
-        return val.replace('"', '').replace("'", "").replace('\n', '').replace('\r', '').replace(' ', '').strip()
-    return default
+            return str(st.secrets[key_name.upper()]).strip()
+    except Exception: pass
+    return os.getenv(key_name.upper(), default)
 
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
-# --- OS-LEVEL NETWORK BYPASS ENGINE ---
-def execute_curl_telegram_get(tg_token, tg_chat_id="", text="", clear_webhook=False):
-    """Uses OS curl with a GET request to completely bypass Python's corrupted SSL proxy environment"""
-    try:
-        if clear_webhook:
-            url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
-        else:
-            encoded_text = urllib.parse.quote(text)
-            url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage?chat_id={tg_chat_id}&text={encoded_text}"
-            
-        # -k bypasses OS-level SSL verification issues just in case
-        curl_cmd = ["curl", "-k", "-s", url]
-        res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
-        if res.stdout:
-            return json.loads(res.stdout)
-        return {"ok": False, "description": f"cURL empty. Stderr: {res.stderr}"}
-    except Exception as e:
-        return {"ok": False, "description": f"cURL fallback failed: {e}"}
-
 # --- NEURAL PAGER (WEBHOOK SYSTEM) ---
-def send_webhook_alert(message, return_debug=False):
+def send_webhook_alert(message):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
-        try: 
-            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2, proxies={"http": None, "https": None})
-        except Exception: 
-            pass
+        try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
+        except Exception: pass
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
-    
-    if not tg_token or not tg_chat_id:
-        if return_debug: return False, "Missing TELEGRAM_TOKEN or TELEGRAM_CHAT_ID in secrets."
-        return False
-        
-    if tg_token.lower().startswith("bot"): 
-        tg_token = tg_token[3:]
-        
-    tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
-    tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
-    safe_message = message.replace("**", "").replace("*", "")
-    final_message = f"🦊 KITSUNE PAGER:\n{safe_message}"
-    
-    tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
-    payload = {"chat_id": tg_chat_id, "text": final_message}
-    
-    # Attempt 1: Standard Requests (Proxies forced off)
-    try:
-        res = requests.post(tg_url, json=payload, timeout=5, proxies={"http": None, "https": None})
-        if res.json().get("ok"):
-            if return_debug: return True, "Message sent successfully via Python Requests!"
-            return True
-    except Exception as py_err:
-        pass # Fallthrough to Attempt 2
-
-    # Attempt 2: urllib Fallback
-    try:
-        import urllib.request
-        req = urllib.request.Request(tg_url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
-        proxy_handler = urllib.request.ProxyHandler({}) # Blank proxy handler
-        opener = urllib.request.build_opener(proxy_handler)
-        with opener.open(req, timeout=5) as response:
-            if response.status == 200:
-                if return_debug: return True, "Message sent successfully via urllib fallback!"
-                return True
-    except Exception as url_err:
-        pass # Fallthrough to Attempt 3
-
-    # Attempt 3: OS cURL GET Bypass (Bulletproof)
-    try:
-        curl_res = execute_curl_telegram_get(tg_token, tg_chat_id, final_message)
-        if curl_res.get("ok"):
-            if return_debug: return True, "Message sent successfully via OS cURL Bypass!"
-            return True
-        else:
-            if return_debug: return False, f"Telegram rejected cURL: {curl_res.get('description')}"
-            return False
-    except Exception as e:
-        if return_debug: return False, f"Total network failure: {e}"
-        return False
+    if tg_token and tg_chat_id:
+        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+        try:
+            tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+            payload = {
+                "chat_id": tg_chat_id, 
+                "text": f"🦊 *KITSUNE PAGER:*\n{message}",
+                "parse_mode": "Markdown"
+            }
+            requests.post(tg_url, json=payload, timeout=3)
+        except Exception: pass
 
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
@@ -295,62 +188,53 @@ def sync_telegram_replies():
     if not tg_token or not tg_chat_id: return
     if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
     
-    tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
-    tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
-    
     fresh_config = load_config()
     last_update_id = fresh_config.get("telegram_last_update_id", 0)
-    url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
     
-    res_data = None
     try:
-        res_data = requests.get(url, timeout=1.5, proxies={"http": None, "https": None}).json()
-    except Exception:
-        try:
-            curl_cmd = ["curl", "-k", "-s", url]
-            res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
-            if res.stdout: res_data = json.loads(res.stdout)
-        except Exception: pass
+        url = f"https://api.telegram.org/bot{tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
+        res = requests.get(url, timeout=1.5).json()
         
-    if res_data and res_data.get("ok") and res_data.get("result"):
-        chat_data = load_live_chat()
-        found_new = False
-        
-        for item in res_data["result"]:
-            update_id = item["update_id"]
-            if update_id > last_update_id:
-                last_update_id = update_id
-                
-                msg = item.get("message", {})
-                if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
-                    text = msg.get("text", "")
-                    if text and not text.startswith("/"):
-                        target_company = "General Public"
-                        if "reply_to_message" in msg:
-                            orig_text = msg["reply_to_message"].get("text", "")
-                            if "MESSAGE FROM" in orig_text:
-                                try:
-                                    target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
-                                    target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").replace("😈", "").strip()
-                                except Exception: pass
-                        
-                        if target_company not in chat_data:
-                            chat_data[target_company] = []
+        if res.get("ok") and res.get("result"):
+            chat_data = load_live_chat()
+            found_new = False
+            
+            for item in res["result"]:
+                update_id = item["update_id"]
+                if update_id > last_update_id:
+                    last_update_id = update_id
+                    
+                    msg = item.get("message", {})
+                    if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
+                        text = msg.get("text", "")
+                        if text and not text.startswith("/"):
+                            target_company = "General Public"
+                            if "reply_to_message" in msg:
+                                orig_text = msg["reply_to_message"].get("text", "")
+                                if "MESSAGE FROM" in orig_text:
+                                    try:
+                                        target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
+                                        target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").replace("😈", "").strip()
+                                    except Exception: pass
                             
-                        chat_data[target_company].append({
-                            "role": "assistant",
-                            "company": "Adem (Admin)",
-                            "content": text,
-                            "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
-                            "unix_time": time.time()
-                        })
-                        found_new = True
-        
-        if found_new:
-            save_live_chat(chat_data)
-            fresh_config["telegram_last_update_id"] = last_update_id
-            save_config(fresh_config)
-            app_config["telegram_last_update_id"] = last_update_id
+                            if target_company not in chat_data:
+                                chat_data[target_company] = []
+                                
+                            chat_data[target_company].append({
+                                "role": "assistant",
+                                "company": "Adem (Admin)",
+                                "content": text,
+                                "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
+                                "unix_time": time.time()
+                            })
+                            found_new = True
+            
+            if found_new:
+                save_live_chat(chat_data)
+                fresh_config["telegram_last_update_id"] = last_update_id
+                save_config(fresh_config)
+                app_config["telegram_last_update_id"] = last_update_id
+    except Exception: pass
 
 def increment_metric(metric, value=None):
     data = load_analytics()
@@ -363,7 +247,7 @@ def increment_metric(metric, value=None):
 def track_cv_download():
     increment_metric("cv_downloads")
     current_company = st.session_state.get("company_context", "Unknown Entity").split('\n')[0].replace('Company Name: ', '')
-    send_webhook_alert(f"Target {current_company} just downloaded your Master CV! 📄")
+    send_webhook_alert(f"Target **{current_company}** just downloaded your Master CV! 📄")
 
 def load_chat_logs():
     if not os.path.exists(CHAT_LOGS_FILE): return []
@@ -384,7 +268,7 @@ def log_chat(company, user_msg, bot_msg):
     elif "sara" in clean_company.lower() or "wife" in clean_company.lower(): icon = "💖"
     else: icon = "🦊"
     
-    send_webhook_alert(f"{icon} {clean_company} asked AI: \"{user_msg}\"")
+    send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -588,6 +472,7 @@ if st.query_params.get("initialized") == "true":
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 
+# Load persistent messages for Sara, or initialize empty list for general visitors
 if "messages" not in st.session_state: 
     if st.session_state.get("is_wife_mode"):
         st.session_state.messages = load_sara_history()
@@ -651,7 +536,7 @@ if not st.session_state.app_initialized:
                     if "everything" in wife_answer.lower():
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
-                        st.session_state.messages = load_sara_history()
+                        st.session_state.messages = load_sara_history() # Persistent memory load
                         
                         gate_placeholder.empty()
                         with gate_placeholder.container():
@@ -661,11 +546,11 @@ if not st.session_state.app_initialized:
                                 st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
                                 st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
                                 status_text = st.empty()
-                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Loading long-term memories...</p>", unsafe_allow_html=True)
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
+                                    send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
@@ -716,7 +601,7 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Adem's sister-in-law and Sara's sister. Time to relentlessly roast her and remind her Adem is the favorite."
@@ -752,10 +637,12 @@ if not st.session_state.app_initialized:
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
+            send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
             st.session_state.wife_auth_pending = True
             st.rerun()
             
         elif clean_input.lower() == "egi":
+            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: Sibling verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -770,12 +657,12 @@ if not st.session_state.app_initialized:
                 auth_code = str(random.randint(100000, 999999))
                 st.session_state.admin_2fa_code = auth_code
                 st.session_state.admin_2fa_pending = True
-                send_webhook_alert(f"⚠️ ROOT ACCESS ATTEMPT DETECTED\n\nYour 2FA Override Code is: {auth_code}")
+                send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
                 st.rerun()
                 
         else:
             target_name = clean_input if clean_input else "General Public"
-            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den! 🎯")
+            send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
             
             increment_metric("total_visits")
             if clean_input: 
@@ -803,7 +690,7 @@ if not st.session_state.app_initialized:
                         try:
                             headers = {"User-Agent": "Mozilla/5.0"}
                             query = urllib.parse.quote(f"{clean_input} company overview tech stack")
-                            url = f"[https://html.duckduckgo.com/html/?q=](https://html.duckduckgo.com/html/?q=){query}"
+                            url = f"https://html.duckduckgo.com/html/?q={query}"
                             response = requests.get(url, headers=headers)
                             soup = BeautifulSoup(response.text, "html.parser")
                             snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
@@ -893,8 +780,8 @@ with st.sidebar:
     st.markdown("### Comm Links")
     st.markdown("""
         <div style="display: flex; gap: 10px;">
-            <a href="[https://linkedin.com/in/adembenhalima](https://linkedin.com/in/adembenhalima)" target="_blank" class="social-link" title="LinkedIn"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
-            <a href="[https://github.com/adembenhalima](https://github.com/adembenhalima)" target="_blank" class="social-link" title="GitHub"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
+            <a href="https://linkedin.com/in/adembenhalima" target="_blank" class="social-link" title="LinkedIn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
+            <a href="https://github.com/adembenhalima" target="_blank" class="social-link" title="GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
         </div>
     """, unsafe_allow_html=True)
     
@@ -905,7 +792,7 @@ with st.sidebar:
             feedback_text = st.text_area("Suggestions, bugs, or thoughts?", height=100, label_visibility="collapsed")
             if st.form_submit_button("Send Anonymously", use_container_width=True):
                 if feedback_text.strip():
-                    send_webhook_alert(f"📢 NEW FEEDBACK:\n{feedback_text.strip()}")
+                    send_webhook_alert(f"📢 **NEW FEEDBACK**:\n{feedback_text.strip()}")
                     st.success("Feedback sent!")
 
     if st.button("Terminate Connection", use_container_width=True):
@@ -1105,6 +992,7 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
+                                # INJECT PERSISTENT SARA MEMORIES INTO CONTEXT
                                 sara_memories = load_sara_memories()
                                 memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
                                 persona_instruction += memory_injection
@@ -1124,6 +1012,7 @@ with tab_chat:
                     
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
             
+            # Persistent memory operations for Sara
             if st.session_state.get("is_wife_mode"):
                 save_sara_history(st.session_state.messages)
                 extract_and_store_sara_memories(prompt_to_process, bot_reply)
@@ -1168,6 +1057,7 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
+                        # WIRETAP LOGGING
                         log_chat("Sara (Wife)", f"[Tool: Argument Judge] They are arguing about: {arg_input}", agent_response.content)
                     except Exception as e:
                         st.error("Error connecting to Adem's brain.")
@@ -1192,6 +1082,7 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
+                    # WIRETAP LOGGING
                     log_chat("Sara (Wife)", "[Tool: Generate Sweet Note]", agent_response.content)
                 except Exception as e:
                     st.error("Error connecting to Adem's brain.")
@@ -1216,6 +1107,7 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
+                        # WIRETAP LOGGING
                         log_chat("Egi (Sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
@@ -1236,6 +1128,7 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
+                    # WIRETAP LOGGING
                     log_chat("Egi (Sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
@@ -1359,7 +1252,7 @@ if is_human_comm_active:
 if st.session_state.is_admin:
     with tab_admin:
         st.markdown("### ROOT COMMAND CENTER")
-        adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics 🛠️", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
+        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
         
         with adm_tab1:
             analytics_data = load_analytics()
@@ -1418,42 +1311,8 @@ if st.session_state.is_admin:
             else:
                 st.write("No conversations intercepted yet.")
 
-        # --- TELEGRAM DIAGNOSTICS & HEALING TOOL ---
+        # --- SARA BRAIN & MEMORY MANAGER (SELECTIVE DELETION) ---
         with adm_tab2:
-            st.markdown("### Telegram Connection Diagnostics & Repair")
-            st.write("Use this tool to test Telegram delivery or fix silent errors.")
-            
-            col_diag1, col_diag2 = st.columns(2)
-            
-            with col_diag1:
-                st.markdown("#### Test Telegram Alert Delivery")
-                if st.button("Send Test Alert Message", use_container_width=True):
-                    success, response_text = send_webhook_alert("🔔 TEST ALERT: Telegram connection verified from Kitsune Command Center!", return_debug=True)
-                    if success:
-                        st.success(f"SUCCESS: {response_text}")
-                    else:
-                        st.error(f"FAILURE: {response_text}")
-            
-            with col_diag2:
-                st.markdown("#### Clear Stuck Webhooks")
-                if st.button("Force Clear Webhooks", use_container_width=True):
-                    tg_token = get_secret_val("telegram_token")
-                    if tg_token:
-                        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
-                        tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
-                        try:
-                            res_data = execute_curl_telegram_get(tg_token, clear_webhook=True)
-                            if res_data and res_data.get("ok"):
-                                st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
-                            else:
-                                st.error(f"Failed to clear webhook: {res_data.get('description', 'Unknown Error')}")
-                        except Exception as e:
-                            st.error(f"Error connecting: {e}")
-                    else:
-                        st.error("Missing TELEGRAM_TOKEN secret.")
-
-        # --- SARA BRAIN & MEMORY MANAGER ---
-        with adm_tab3:
             st.markdown("### Sara's Learned Memories & Character Profile")
             st.write("Below are the facts, preferences, and events the AI has autonomously extracted from Sara during her chats.")
             
@@ -1497,7 +1356,7 @@ if st.session_state.is_admin:
                     st.success("Sara's chat history wiped!")
                     st.rerun()
 
-        with adm_tab4:
+        with adm_tab3:
             st.info("🔒 **Security Enforcement Active:** API keys and Webhook credentials are hard-locked to Streamlit Secrets / Environment Variables and cannot be modified or leaked via this UI.")
             
             with st.form("config_form"):
@@ -1522,7 +1381,7 @@ if st.session_state.is_admin:
                 new_persona = st.text_area("Master Persona Prompt", value=app_config.get("persona_prompt", ""), height=150)
                 
                 st.markdown("#### Hidden Mode Prompts")
-                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
+                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=100)
                 new_egi_persona = st.text_area("Egi Mode Prompt (Trigger: 'egi')", value=app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"]), height=100)
                 
                 st.markdown("#### Security Protocols")
@@ -1565,7 +1424,7 @@ if st.session_state.is_admin:
                     save_live_chat({})
                     st.success("Human Comm-Link history purged.")
 
-        with adm_tab5:
+        with adm_tab4:
             st.markdown("### Bulk Vector Upload")
             st.write("Upload raw text files to permanently expand Kitsune's RAG architecture. This text will be appended directly into `my_brain.txt`.")
             new_knowledge = st.file_uploader("Select .txt file to append", type=["txt"])
