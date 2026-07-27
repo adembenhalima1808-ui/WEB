@@ -15,6 +15,15 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import HumanMessage
 
+# ==========================================
+# 🛡️ AGGRESSIVE OS PROXY PURGE
+# This fixes the "unknown url type: [https>" error
+# by forcing Python to ignore corrupted Windows/OS proxies.
+# ==========================================
+for proxy_env in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+    if proxy_env in os.environ:
+        del os.environ[proxy_env]
+
 # Import the RAG Engine
 from core.rag_engine import initialize_rag_system
 
@@ -199,29 +208,28 @@ def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
 # --- OS-LEVEL NETWORK BYPASS ENGINE ---
-def execute_curl_request(url, method="GET", payload=None):
-    """Uses OS curl to bypass Python's broken SSL environment"""
+def execute_curl_telegram_get(tg_token, tg_chat_id, text):
+    """Uses OS curl with a GET request to completely bypass Python's corrupted SSL proxy environment"""
     try:
-        if method == "POST" and payload:
-            curl_cmd = ["curl", "-s", "-X", "POST", url, "-H", "Content-Type: application/json", "-d", json.dumps(payload)]
-        else:
-            curl_cmd = ["curl", "-s", url]
-            
+        encoded_text = urllib.parse.quote(text)
+        url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage?chat_id={tg_chat_id}&text={encoded_text}"
+        # -k bypasses OS-level SSL verification issues just in case
+        curl_cmd = ["curl", "-k", "-s", url]
         res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
         if res.stdout:
             return json.loads(res.stdout)
+        return {"ok": False, "description": f"cURL empty. Stderr: {res.stderr}"}
     except Exception as e:
         return {"ok": False, "description": f"cURL fallback failed: {e}"}
-    return {"ok": False, "description": "cURL returned empty"}
 
-# --- NEURAL PAGER (WEBHOOK SYSTEM WITH CURL FALLBACK) ---
+# --- NEURAL PAGER (WEBHOOK SYSTEM) ---
 def send_webhook_alert(message, return_debug=False):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
         try: 
-            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
+            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2, proxies={"http": None, "https": None})
         except Exception: 
-            execute_curl_request(discord_url, method="POST", payload={"content": f"🦊 **KITSUNE PAGER:** {message}"})
+            pass
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
@@ -236,27 +244,41 @@ def send_webhook_alert(message, return_debug=False):
     tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
     tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
     safe_message = message.replace("**", "").replace("*", "")
+    final_message = f"🦊 KITSUNE PAGER:\n{safe_message}"
     
     tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
-    payload = {"chat_id": tg_chat_id, "text": f"🦊 KITSUNE PAGER:\n{safe_message}"}
+    payload = {"chat_id": tg_chat_id, "text": final_message}
     
-    # Attempt 1: Standard Requests (Fails if Python lacks SSL)
+    # Attempt 1: Standard Requests (Proxies forced off)
     try:
-        res = requests.post(tg_url, json=payload, timeout=5)
+        res = requests.post(tg_url, json=payload, timeout=5, proxies={"http": None, "https": None})
         if res.json().get("ok"):
             if return_debug: return True, "Message sent successfully via Python Requests!"
             return True
     except Exception as py_err:
-        pass # Moving to fallback
+        pass # Fallthrough to Attempt 2
 
-    # Attempt 2: OS cURL Bypass (Guaranteed to work if browser works)
+    # Attempt 2: urllib Fallback
     try:
-        curl_res = execute_curl_request(tg_url, method="POST", payload=payload)
+        import urllib.request
+        req = urllib.request.Request(tg_url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
+        proxy_handler = urllib.request.ProxyHandler({}) # Blank proxy handler
+        opener = urllib.request.build_opener(proxy_handler)
+        with opener.open(req, timeout=5) as response:
+            if response.status == 200:
+                if return_debug: return True, "Message sent successfully via urllib fallback!"
+                return True
+    except Exception as url_err:
+        pass # Fallthrough to Attempt 3
+
+    # Attempt 3: OS cURL GET Bypass (Bulletproof)
+    try:
+        curl_res = execute_curl_telegram_get(tg_token, tg_chat_id, final_message)
         if curl_res.get("ok"):
             if return_debug: return True, "Message sent successfully via OS cURL Bypass!"
             return True
         else:
-            if return_debug: return False, f"Telegram rejected: {curl_res.get('description')}"
+            if return_debug: return False, f"Telegram rejected cURL: {curl_res.get('description')}"
             return False
     except Exception as e:
         if return_debug: return False, f"Total network failure: {e}"
@@ -278,10 +300,13 @@ def sync_telegram_replies():
     
     res_data = None
     try:
-        res_data = requests.get(url, timeout=1.5).json()
+        res_data = requests.get(url, timeout=1.5, proxies={"http": None, "https": None}).json()
     except Exception:
-        # Fallback to cURL Bypass
-        res_data = execute_curl_request(url, method="GET")
+        try:
+            curl_cmd = ["curl", "-k", "-s", url]
+            res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
+            if res.stdout: res_data = json.loads(res.stdout)
+        except Exception: pass
         
     if res_data and res_data.get("ok") and res_data.get("result"):
         chat_data = load_live_chat()
@@ -559,7 +584,6 @@ if st.query_params.get("initialized") == "true":
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 
-# Load persistent messages for Sara, or initialize empty list for general visitors
 if "messages" not in st.session_state: 
     if st.session_state.get("is_wife_mode"):
         st.session_state.messages = load_sara_history()
@@ -623,7 +647,7 @@ if not st.session_state.app_initialized:
                     if "everything" in wife_answer.lower():
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
-                        st.session_state.messages = load_sara_history() # Persistent memory load
+                        st.session_state.messages = load_sara_history()
                         
                         gate_placeholder.empty()
                         with gate_placeholder.container():
@@ -724,12 +748,10 @@ if not st.session_state.app_initialized:
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
-            send_webhook_alert("💖 WIFE MODE ATTEMPTED: Sara is entering security verification...")
             st.session_state.wife_auth_pending = True
             st.rerun()
             
         elif clean_input.lower() == "egi":
-            send_webhook_alert("😈 EGI MODE ATTEMPTED: In-law verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -1079,7 +1101,6 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
-                                # INJECT PERSISTENT SARA MEMORIES INTO CONTEXT
                                 sara_memories = load_sara_memories()
                                 memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
                                 persona_instruction += memory_injection
@@ -1099,7 +1120,6 @@ with tab_chat:
                     
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
             
-            # Persistent memory operations for Sara
             if st.session_state.get("is_wife_mode"):
                 save_sara_history(st.session_state.messages)
                 extract_and_store_sara_memories(prompt_to_process, bot_reply)
@@ -1144,7 +1164,6 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
-                        # WIRETAP LOGGING
                         log_chat("Sara (Wife)", f"[Tool: Argument Judge] They are arguing about: {arg_input}", agent_response.content)
                     except Exception as e:
                         st.error("Error connecting to Adem's brain.")
@@ -1169,7 +1188,6 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
-                    # WIRETAP LOGGING
                     log_chat("Sara (Wife)", "[Tool: Generate Sweet Note]", agent_response.content)
                 except Exception as e:
                     st.error("Error connecting to Adem's brain.")
@@ -1194,7 +1212,6 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
-                        # WIRETAP LOGGING
                         log_chat("Egi (Sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
@@ -1215,7 +1232,6 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
-                    # WIRETAP LOGGING
                     log_chat("Egi (Sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
@@ -1401,7 +1417,7 @@ if st.session_state.is_admin:
         # --- TELEGRAM DIAGNOSTICS & HEALING TOOL ---
         with adm_tab2:
             st.markdown("### Telegram Connection Diagnostics & Repair")
-            st.write("Use this tool to test Telegram delivery or fix silent 409 Webhook Conflict errors.")
+            st.write("Use this tool to test Telegram delivery or fix silent errors.")
             
             col_diag1, col_diag2 = st.columns(2)
             
@@ -1415,15 +1431,14 @@ if st.session_state.is_admin:
                         st.error(f"FAILURE: {response_text}")
             
             with col_diag2:
-                st.markdown("#### Clear Stuck Webhooks (Fix 409 Conflict)")
+                st.markdown("#### Clear Stuck Webhooks")
                 if st.button("Force Clear Webhooks", use_container_width=True):
                     tg_token = get_secret_val("telegram_token")
                     if tg_token:
                         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
                         tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
                         try:
-                            # Use curl bypass for webhook clearing too just in case!
-                            res_data = execute_curl_request(f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true", method="GET")
+                            res_data = execute_curl_telegram_get(tg_token, "", "test", clear_webhook=True)
                             if res_data and res_data.get("ok"):
                                 st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
                             else:
