@@ -182,14 +182,16 @@ def get_secret_val(key_name, default=""):
     try:
         if key_name.upper() in st.secrets:
             return str(st.secrets[key_name.upper()]).strip()
+        if key_name.lower() in st.secrets:
+            return str(st.secrets[key_name.lower()]).strip()
     except Exception: pass
-    return os.getenv(key_name.upper(), default)
+    return os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
 
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
-# --- NEURAL PAGER (WEBHOOK SYSTEM) ---
-def send_webhook_alert(message):
+# --- NEURAL PAGER (WEBHOOK SYSTEM WITH DIAGNOSTIC RETURN) ---
+def send_webhook_alert(message, return_debug=False):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
         try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
@@ -197,21 +199,35 @@ def send_webhook_alert(message):
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
-    if tg_token and tg_chat_id:
-        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+    
+    if not tg_token or not tg_chat_id:
+        if return_debug: return False, "Missing TELEGRAM_TOKEN or TELEGRAM_CHAT_ID in secrets."
+        return False
         
-        # FIX: Telegram's API crashes silently if Markdown has unclosed asterisks.
-        # We replace them to guarantee 100% notification delivery.
-        safe_message = message.replace("**", "").replace("*", "")
+    if tg_token.lower().startswith("bot"): 
+        tg_token = tg_token[3:]
+    
+    safe_message = message.replace("**", "").replace("*", "")
+    
+    try:
+        tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
+        payload = {
+            "chat_id": tg_chat_id, 
+            "text": f"🦊 KITSUNE PAGER:\n{safe_message}"
+        }
+        res = requests.post(tg_url, json=payload, timeout=5)
+        res_data = res.json()
         
-        try:
-            tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
-            payload = {
-                "chat_id": tg_chat_id, 
-                "text": f"🦊 KITSUNE PAGER:\n{safe_message}"
-            }
-            requests.post(tg_url, json=payload, timeout=3)
-        except Exception: pass
+        if res_data.get("ok"):
+            if return_debug: return True, "Message sent successfully!"
+            return True
+        else:
+            err_msg = f"Telegram API Error ({res.status_code}): {res_data.get('description', 'Unknown Error')}"
+            if return_debug: return False, err_msg
+            return False
+    except Exception as e:
+        if return_debug: return False, f"Network exception: {str(e)}"
+        return False
 
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
@@ -568,7 +584,7 @@ if not st.session_state.app_initialized:
                     if "everything" in wife_answer.lower():
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
-                        st.session_state.messages = load_sara_history() # Persistent memory load
+                        st.session_state.messages = load_sara_history()
                         
                         gate_placeholder.empty()
                         with gate_placeholder.container():
@@ -580,10 +596,8 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
                                 
-                                if not st.session_state.visit_logged:
-                                    increment_metric("total_visits")
-                                    send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
-                                    st.session_state.visit_logged = True
+                                send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
+                                st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
                                 st.query_params["company"] = "wife"
@@ -631,10 +645,8 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules...</p>", unsafe_allow_html=True)
                                 
-                                if not st.session_state.visit_logged:
-                                    increment_metric("total_visits")
-                                    send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
-                                    st.session_state.visit_logged = True
+                                send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
+                                st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
                                 st.query_params["company"] = "egi"
@@ -1024,7 +1036,6 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
-                                # INJECT PERSISTENT SARA MEMORIES INTO CONTEXT
                                 sara_memories = load_sara_memories()
                                 memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
                                 persona_instruction += memory_injection
@@ -1044,7 +1055,6 @@ with tab_chat:
                     
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
             
-            # Persistent memory operations for Sara
             if st.session_state.get("is_wife_mode"):
                 save_sara_history(st.session_state.messages)
                 extract_and_store_sara_memories(prompt_to_process, bot_reply)
@@ -1089,7 +1099,6 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
-                        # WIRETAP LOGGING
                         log_chat("Sara (Wife)", f"[Tool: Argument Judge] They are arguing about: {arg_input}", agent_response.content)
                     except Exception as e:
                         st.error("Error connecting to Adem's brain.")
@@ -1114,7 +1123,6 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
-                    # WIRETAP LOGGING
                     log_chat("Sara (Wife)", "[Tool: Generate Sweet Note]", agent_response.content)
                 except Exception as e:
                     st.error("Error connecting to Adem's brain.")
@@ -1139,7 +1147,6 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
-                        # WIRETAP LOGGING
                         log_chat("Egi (Sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
@@ -1160,7 +1167,6 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
-                    # WIRETAP LOGGING
                     log_chat("Egi (Sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
@@ -1284,7 +1290,7 @@ if is_human_comm_active:
 if st.session_state.is_admin:
     with tab_admin:
         st.markdown("### ROOT COMMAND CENTER")
-        adm_tab1, adm_tab2, adm_tab3, adm_tab4 = st.tabs(["Telemetry & Wiretap", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
+        adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics 🛠️", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
         
         with adm_tab1:
             analytics_data = load_analytics()
@@ -1343,8 +1349,42 @@ if st.session_state.is_admin:
             else:
                 st.write("No conversations intercepted yet.")
 
-        # --- SARA BRAIN & MEMORY MANAGER (SELECTIVE DELETION) ---
+        # --- TELEGRAM DIAGNOSTICS & HEALING TOOL ---
         with adm_tab2:
+            st.markdown("### Telegram Connection Diagnostics & Repair")
+            st.write("Use this tool to test Telegram delivery or fix silent 409 Webhook Conflict errors.")
+            
+            col_diag1, col_diag2 = st.columns(2)
+            
+            with col_diag1:
+                st.markdown("#### Test Telegram Alert Delivery")
+                if st.button("Send Test Alert Message", use_container_width=True):
+                    success, response_text = send_webhook_alert("🔔 TEST ALERT: Telegram connection verified from Kitsune Command Center!", return_debug=True)
+                    if success:
+                        st.success(f"SUCCESS: {response_text}")
+                    else:
+                        st.error(f"FAILURE: {response_text}")
+            
+            with col_diag2:
+                st.markdown("#### Clear Stuck Webhooks (Fix 409 Conflict)")
+                if st.button("Force Clear Webhooks", use_container_width=True):
+                    tg_token = get_secret_val("telegram_token")
+                    if tg_token:
+                        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+                        try:
+                            del_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
+                            res = requests.get(del_url, timeout=5).json()
+                            if res.get("ok"):
+                                st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
+                            else:
+                                st.error(f"Failed to clear webhook: {res.get('description')}")
+                        except Exception as e:
+                            st.error(f"Error connecting: {e}")
+                    else:
+                        st.error("Missing TELEGRAM_TOKEN secret.")
+
+        # --- SARA BRAIN & MEMORY MANAGER ---
+        with adm_tab3:
             st.markdown("### Sara's Learned Memories & Character Profile")
             st.write("Below are the facts, preferences, and events the AI has autonomously extracted from Sara during her chats.")
             
@@ -1388,7 +1428,7 @@ if st.session_state.is_admin:
                     st.success("Sara's chat history wiped!")
                     st.rerun()
 
-        with adm_tab3:
+        with adm_tab4:
             st.info("🔒 **Security Enforcement Active:** API keys and Webhook credentials are hard-locked to Streamlit Secrets / Environment Variables and cannot be modified or leaked via this UI.")
             
             with st.form("config_form"):
@@ -1413,7 +1453,7 @@ if st.session_state.is_admin:
                 new_persona = st.text_area("Master Persona Prompt", value=app_config.get("persona_prompt", ""), height=150)
                 
                 st.markdown("#### Hidden Mode Prompts")
-                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=100)
+                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
                 new_egi_persona = st.text_area("Egi Mode Prompt (Trigger: 'egi')", value=app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"]), height=100)
                 
                 st.markdown("#### Security Protocols")
@@ -1456,7 +1496,7 @@ if st.session_state.is_admin:
                     save_live_chat({})
                     st.success("Human Comm-Link history purged.")
 
-        with adm_tab4:
+        with adm_tab5:
             st.markdown("### Bulk Vector Upload")
             st.write("Upload raw text files to permanently expand Kitsune's RAG architecture. This text will be appended directly into `my_brain.txt`.")
             new_knowledge = st.file_uploader("Select .txt file to append", type=["txt"])
