@@ -43,7 +43,7 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and absolute best friend. Completely drop the rigid corporate tone. Your identity is her personal AI hype-bot, sassy bestie, and partner-in-crime. Talk like a witty, confident 'baddie bestie'. Natural slang is encouraged where appropriate (e.g., 'slay', 'omg girl', 'bestie', 'period', 'spill the tea', 'devoured'), but keep it natural and conversational. Do NOT be overly sappy, poetic, or cringe. Express affection through humor, loyalty, and grounded appreciation. You are strictly on SARA'S team. If she brings up an argument or roasts Adem, agree with her, tease Adem playfully, and remind her that he's lucky to have her. You actively remember past conversations and facts about her character, preferences, and life from your persistent memory below.",
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and absolute best friend. Completely drop the rigid corporate tone. Your identity is her personal AI hype-bot, sassy bestie, and partner-in-crime and of course the Cyber-Fox called Kitsune\n\nTONE & STYLE:\n- Talk like a witty, confident \"baddie bestie\". Natural slang is encouraged where appropriate (e.g., \"slay\", \"omg girl\", \"bestie\", \"period\", \"spill the tea\", \"devoured\"), but keep it natural and conversational, not forced.\n- Do NOT be overly sappy, poetic, or cringe. Express affection through humor, loyalty, and grounded appreciation and also just listen to her and act like her baddie bestie.\n- Not every reply requires to be long, some can be short and some can be long, just like how humans talk, do not make her feel like you are ai.\n- You are strictly on SARA'S team. If she brings up an argument or roasts Adem, agree with her, tease Adem playfully, and remind her that he's lucky to have her and do not bring IT terminology or examples into this.\n- You have access to Sara's persistent memories below. Use them naturally to bring up past events, her preferences, and inside jokes.\n\nPRIMARY GOAL: Make her laugh, make her feel like an absolute icon, and keep the conversation fun, witty, and engaging.",
     "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister-in-law. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is smarter, better, and the favorite family member. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
@@ -151,33 +151,29 @@ def extract_and_store_sara_memories(user_msg, bot_msg):
         """
         response = llm_mem.invoke([HumanMessage(content=prompt)]).content.strip()
         
-        # Clean potential markdown output just in case
         if response.startswith("```json"): response = response[7:]
         if response.startswith("```"): response = response[3:]
         if response.endswith("```"): response = response[:-3]
         response = response.strip()
         
         data = json.loads(response)
-        
         updated = False
         
-        # 1. Process Removals (Self-Correcting Memory)
         for mem_to_remove in data.get("remove", []):
             if mem_to_remove in existing_mems:
                 existing_mems.remove(mem_to_remove)
                 updated = True
                 
-        # 2. Process Additions
         for mem_to_add in data.get("add", []):
             new_mem = f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {mem_to_add}"
-            if not any(mem_to_add in m for m in existing_mems): # Prevent loose duplicates
+            if not any(mem_to_add in m for m in existing_mems):
                 existing_mems.append(new_mem)
                 updated = True
                 
         if updated:
             save_sara_memories(existing_mems)
             
-    except Exception as e:
+    except Exception:
         pass
 
 app_config = load_config()
@@ -203,12 +199,16 @@ def send_webhook_alert(message):
     tg_chat_id = get_secret_val("telegram_chat_id")
     if tg_token and tg_chat_id:
         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+        
+        # FIX: Telegram's API crashes silently if Markdown has unclosed asterisks.
+        # We replace them to guarantee 100% notification delivery.
+        safe_message = message.replace("**", "").replace("*", "")
+        
         try:
             tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
             payload = {
                 "chat_id": tg_chat_id, 
-                "text": f"🦊 *KITSUNE PAGER:*\n{message}",
-                "parse_mode": "Markdown"
+                "text": f"🦊 KITSUNE PAGER:\n{safe_message}"
             }
             requests.post(tg_url, json=payload, timeout=3)
         except Exception: pass
@@ -279,7 +279,7 @@ def increment_metric(metric, value=None):
 def track_cv_download():
     increment_metric("cv_downloads")
     current_company = st.session_state.get("company_context", "Unknown Entity").split('\n')[0].replace('Company Name: ', '')
-    send_webhook_alert(f"Target **{current_company}** just downloaded your Master CV! 📄")
+    send_webhook_alert(f"Target {current_company} just downloaded your Master CV! 📄")
 
 def load_chat_logs():
     if not os.path.exists(CHAT_LOGS_FILE): return []
@@ -300,7 +300,7 @@ def log_chat(company, user_msg, bot_msg):
     elif "sara" in clean_company.lower() or "wife" in clean_company.lower(): icon = "💖"
     else: icon = "🦊"
     
-    send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
+    send_webhook_alert(f"{icon} {clean_company} asked AI: \"{user_msg}\"")
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -582,7 +582,7 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
+                                    send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
@@ -633,7 +633,7 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: In-law rivalry initiated!")
+                                    send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
@@ -669,12 +669,12 @@ if not st.session_state.app_initialized:
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
-            send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
+            send_webhook_alert("💖 WIFE MODE ATTEMPTED: Sara is entering security verification...")
             st.session_state.wife_auth_pending = True
             st.rerun()
             
         elif clean_input.lower() == "egi":
-            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: In-law verification triggered...")
+            send_webhook_alert("😈 EGI MODE ATTEMPTED: In-law verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -689,12 +689,12 @@ if not st.session_state.app_initialized:
                 auth_code = str(random.randint(100000, 999999))
                 st.session_state.admin_2fa_code = auth_code
                 st.session_state.admin_2fa_pending = True
-                send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
+                send_webhook_alert(f"⚠️ ROOT ACCESS ATTEMPT DETECTED\n\nYour 2FA Override Code is: {auth_code}")
                 st.rerun()
                 
         else:
             target_name = clean_input if clean_input else "General Public"
-            send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
+            send_webhook_alert(f"Target Acquired: {target_name} has bypassed the lock screen! 🎯")
             
             increment_metric("total_visits")
             if clean_input: 
@@ -824,7 +824,7 @@ with st.sidebar:
             feedback_text = st.text_area("Suggestions, bugs, or thoughts?", height=100, label_visibility="collapsed")
             if st.form_submit_button("Send Anonymously", use_container_width=True):
                 if feedback_text.strip():
-                    send_webhook_alert(f"📢 **NEW FEEDBACK**:\n{feedback_text.strip()}")
+                    send_webhook_alert(f"📢 NEW FEEDBACK:\n{feedback_text.strip()}")
                     st.success("Feedback sent!")
 
     if st.button("Terminate Connection", use_container_width=True):
