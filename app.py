@@ -91,7 +91,7 @@ def save_live_chat(data):
         os.replace(LIVE_CHAT_FILE + ".tmp", LIVE_CHAT_FILE)
     except Exception: pass
 
-# --- SARA PERSISTENT CHAT & SMART MEMORY ENGINE ---
+# --- SARA PERSISTENT CHAT & MEMORY ENGINE ---
 def load_sara_history():
     if not os.path.exists(SARA_HISTORY_FILE): return []
     try:
@@ -117,67 +117,35 @@ def save_sara_memories(memories):
     except Exception: pass
 
 def extract_and_store_sara_memories(user_msg, bot_msg):
-    """Background AI Task: Evaluates conversation to dynamically add or delete memory facts."""
+    """Background AI Task: Evaluates conversation to extract facts & memories about Sara."""
     try:
         api_key = get_secret_val("MISTRAL_API_KEY") or get_heavy_model_key()
         if not api_key: return
         
-        llm_mem = ChatMistralAI(model="mistral-small-latest", temperature=0.1, mistral_api_key=api_key)
+        llm_mem = ChatMistralAI(model="mistral-small-latest", temperature=0.2, mistral_api_key=api_key)
         existing_mems = load_sara_memories()
         
         prompt = f"""
-        You are an advanced, autonomous memory manager for Adem's wife, Sara.
-        Your job is to read her latest message and accurately update her persistent memory database.
+        You are a memory extraction unit analyzing a chat with Sara (Adem's wife).
         
-        Current Database of Known Facts:
+        Current Known Memories about Sara:
         {json.dumps(existing_mems, indent=2)}
         
         Latest Exchange:
         Sara: "{user_msg}"
         AI: "{bot_msg}"
         
-        CRITICAL INSTRUCTIONS:
-        1. If Sara explicitly states a new persistent fact, preference, or trait about herself, extract it concisely.
-        2. If she explicitly CONTRADICTS an old memory (e.g., changes her mind, says she no longer likes something, corrects a fact), you MUST identify the exact old string to be removed.
-        3. Output ONLY a valid, raw JSON object representing your actions. Do NOT output markdown, backticks, or any conversational text.
-        
-        Expected JSON Format:
-        {{
-            "add": ["Concise fact 1", "Concise fact 2"], 
-            "remove": ["Exact string of old memory to delete"]
-        }}
-        
-        If nothing needs updating, output: {{"add": [], "remove": []}}
+        Extract 1 single short, concrete fact, preference, character trait, or recent event mentioned by Sara (e.g. "Sara loves oat milk lattes", "Sara went shopping today", "Sara prefers comedies over action movies").
+        If no new meaningful personal fact or event is revealed in her message, output ONLY the string 'NONE'. Do not repeat facts already known.
+        Output ONLY the fact string or 'NONE'.
         """
         response = llm_mem.invoke([HumanMessage(content=prompt)]).content.strip()
         
-        # Clean potential markdown output just in case
-        if response.startswith("```json"): response = response[7:]
-        if response.startswith("```"): response = response[3:]
-        if response.endswith("```"): response = response[:-3]
-        response = response.strip()
-        
-        data = json.loads(response)
-        
-        updated = False
-        
-        # 1. Process Removals (Self-Correcting Memory)
-        for mem_to_remove in data.get("remove", []):
-            if mem_to_remove in existing_mems:
-                existing_mems.remove(mem_to_remove)
-                updated = True
-                
-        # 2. Process Additions
-        for mem_to_add in data.get("add", []):
-            new_mem = f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {mem_to_add}"
-            if not any(mem_to_add in m for m in existing_mems): # Prevent loose duplicates
-                existing_mems.append(new_mem)
-                updated = True
-                
-        if updated:
-            save_sara_memories(existing_mems)
-            
-    except Exception as e:
+        if response and response.upper() != "NONE" and len(response) > 5:
+            if response not in existing_mems:
+                existing_mems.append(f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {response}")
+                save_sara_memories(existing_mems)
+    except Exception:
         pass
 
 app_config = load_config()
@@ -204,7 +172,7 @@ def send_webhook_alert(message):
     if tg_token and tg_chat_id:
         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
         try:
-            tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
+            tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
             payload = {
                 "chat_id": tg_chat_id, 
                 "text": f"🦊 *KITSUNE PAGER:*\n{message}",
@@ -224,7 +192,7 @@ def sync_telegram_replies():
     last_update_id = fresh_config.get("telegram_last_update_id", 0)
     
     try:
-        url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
+        url = f"https://api.telegram.org/bot{tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
         res = requests.get(url, timeout=1.5).json()
         
         if res.get("ok") and res.get("result"):
@@ -578,7 +546,7 @@ if not st.session_state.app_initialized:
                                 st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
                                 st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
                                 status_text = st.empty()
-                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Loading long-term memories...</p>", unsafe_allow_html=True)
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
@@ -607,7 +575,7 @@ if not st.session_state.app_initialized:
                 st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
                 st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
                 st.markdown("<h2 style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 10px rgba(138,43,226,0.5);'>Vibe Check Required</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite family member is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #A1A1AA;'>Admit who the superior and favorite sibling is to proceed: <br><small><i>(Hint: It starts with A)</i></small></p>", unsafe_allow_html=True)
                 
                 with st.form("egi_auth_form", clear_on_submit=True):
                     egi_answer = st.text_input("Your Answer", type="password", label_visibility="collapsed")
@@ -633,7 +601,7 @@ if not st.session_state.app_initialized:
                                 
                                 if not st.session_state.visit_logged:
                                     increment_metric("total_visits")
-                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: In-law rivalry initiated!")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: Sibling rivalry initiated!")
                                     st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
@@ -674,7 +642,7 @@ if not st.session_state.app_initialized:
             st.rerun()
             
         elif clean_input.lower() == "egi":
-            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: In-law verification triggered...")
+            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: Sibling verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -722,7 +690,7 @@ if not st.session_state.app_initialized:
                         try:
                             headers = {"User-Agent": "Mozilla/5.0"}
                             query = urllib.parse.quote(f"{clean_input} company overview tech stack")
-                            url = f"[https://html.duckduckgo.com/html/?q=](https://html.duckduckgo.com/html/?q=){query}"
+                            url = f"https://html.duckduckgo.com/html/?q={query}"
                             response = requests.get(url, headers=headers)
                             soup = BeautifulSoup(response.text, "html.parser")
                             snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
@@ -771,7 +739,7 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
     elif st.session_state.get("is_egi_mode"):
-        st.caption("The Favorite Family Member")
+        st.caption("The Favorite Child")
         st.markdown(f"""
             <div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #10051A; border-radius: 6px; border: 1px solid rgba(138, 43, 226, 0.4); box-shadow: 0 0 15px rgba(138, 43, 226, 0.2), inset 0 0 10px rgba(138, 43, 226, 0.1);">
                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
@@ -812,8 +780,8 @@ with st.sidebar:
     st.markdown("### Comm Links")
     st.markdown("""
         <div style="display: flex; gap: 10px;">
-            <a href="[https://linkedin.com/in/adembenhalima](https://linkedin.com/in/adembenhalima)" target="_blank" class="social-link" title="LinkedIn"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
-            <a href="[https://github.com/adembenhalima](https://github.com/adembenhalima)" target="_blank" class="social-link" title="GitHub"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
+            <a href="https://linkedin.com/in/adembenhalima" target="_blank" class="social-link" title="LinkedIn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
+            <a href="https://github.com/adembenhalima" target="_blank" class="social-link" title="GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
         </div>
     """, unsafe_allow_html=True)
     
@@ -864,7 +832,7 @@ if st.session_state.get("is_wife_mode"):
 
 elif st.session_state.get("is_egi_mode"):
     st.markdown(f"# The Loser's Lounge")
-    st.markdown(f"**Role:** Second Favorite Family Member | **Location:** In Adem's Shadow")
+    st.markdown(f"**Role:** Second Favorite Child | **Location:** In Adem's Shadow")
     st.write("Welcome to the roast room, Egi. Try not to cry.")
     
     st.markdown("### Egi's Flaw Radar")
