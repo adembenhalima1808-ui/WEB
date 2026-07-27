@@ -4,7 +4,7 @@ import json
 import os
 import random
 import re
-import urllib.request
+import subprocess
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -192,19 +192,36 @@ def get_secret_val(key_name, default=""):
         val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
         
     if val:
-        # Strip all basic invisible newlines and spaces
         return val.replace('"', '').replace("'", "").replace('\n', '').replace('\r', '').replace(' ', '').strip()
     return default
 
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
-# --- NEURAL PAGER (WEBHOOK SYSTEM WITH DIAGNOSTIC RETURN & FALLBACK) ---
+# --- OS-LEVEL NETWORK BYPASS ENGINE ---
+def execute_curl_request(url, method="GET", payload=None):
+    """Uses OS curl to bypass Python's broken SSL environment"""
+    try:
+        if method == "POST" and payload:
+            curl_cmd = ["curl", "-s", "-X", "POST", url, "-H", "Content-Type: application/json", "-d", json.dumps(payload)]
+        else:
+            curl_cmd = ["curl", "-s", url]
+            
+        res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
+        if res.stdout:
+            return json.loads(res.stdout)
+    except Exception as e:
+        return {"ok": False, "description": f"cURL fallback failed: {e}"}
+    return {"ok": False, "description": "cURL returned empty"}
+
+# --- NEURAL PAGER (WEBHOOK SYSTEM WITH CURL FALLBACK) ---
 def send_webhook_alert(message, return_debug=False):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
-        try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
-        except Exception: pass
+        try: 
+            requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
+        except Exception: 
+            execute_curl_request(discord_url, method="POST", payload={"content": f"🦊 **KITSUNE PAGER:** {message}"})
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
@@ -216,36 +233,33 @@ def send_webhook_alert(message, return_debug=False):
     if tg_token.lower().startswith("bot"): 
         tg_token = tg_token[3:]
         
-    # ABSOLUTE REGEX SANITIZER: Destroys ANY hidden/invisible character
     tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
     tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
-    
-    # FIX: Telegram's API crashes silently if Markdown has unclosed asterisks.
     safe_message = message.replace("**", "").replace("*", "")
+    
     tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
     payload = {"chat_id": tg_chat_id, "text": f"🦊 KITSUNE PAGER:\n{safe_message}"}
     
+    # Attempt 1: Standard Requests (Fails if Python lacks SSL)
     try:
         res = requests.post(tg_url, json=payload, timeout=5)
-        res_data = res.json()
-        
-        if res_data.get("ok"):
-            if return_debug: return True, "Message sent successfully via Requests!"
+        if res.json().get("ok"):
+            if return_debug: return True, "Message sent successfully via Python Requests!"
+            return True
+    except Exception as py_err:
+        pass # Moving to fallback
+
+    # Attempt 2: OS cURL Bypass (Guaranteed to work if browser works)
+    try:
+        curl_res = execute_curl_request(tg_url, method="POST", payload=payload)
+        if curl_res.get("ok"):
+            if return_debug: return True, "Message sent successfully via OS cURL Bypass!"
             return True
         else:
-            err_msg = f"Telegram API Error ({res.status_code}): {res_data.get('description', 'Unknown Error')}"
-            if return_debug: return False, err_msg
+            if return_debug: return False, f"Telegram rejected: {curl_res.get('description')}"
             return False
     except Exception as e:
-        # FALLBACK ENGINE: Bypasses python 'requests' adapters if they are corrupted
-        try:
-            req = urllib.request.Request(tg_url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
-            with urllib.request.urlopen(req, timeout=5) as response:
-                if response.status == 200:
-                    if return_debug: return True, "Message sent successfully via urllib fallback!"
-                    return True
-        except Exception as fallback_e:
-            if return_debug: return False, f"Network exception (requests & urllib failed): {str(e)} | {str(fallback_e)}"
+        if return_debug: return False, f"Total network failure: {e}"
         return False
 
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
@@ -260,51 +274,54 @@ def sync_telegram_replies():
     
     fresh_config = load_config()
     last_update_id = fresh_config.get("telegram_last_update_id", 0)
+    url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
     
+    res_data = None
     try:
-        url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/getUpdates?offset={last_update_id + 1}&timeout=1"
-        res = requests.get(url, timeout=1.5).json()
+        res_data = requests.get(url, timeout=1.5).json()
+    except Exception:
+        # Fallback to cURL Bypass
+        res_data = execute_curl_request(url, method="GET")
         
-        if res.get("ok") and res.get("result"):
-            chat_data = load_live_chat()
-            found_new = False
-            
-            for item in res["result"]:
-                update_id = item["update_id"]
-                if update_id > last_update_id:
-                    last_update_id = update_id
-                    
-                    msg = item.get("message", {})
-                    if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
-                        text = msg.get("text", "")
-                        if text and not text.startswith("/"):
-                            target_company = "General Public"
-                            if "reply_to_message" in msg:
-                                orig_text = msg["reply_to_message"].get("text", "")
-                                if "MESSAGE FROM" in orig_text:
-                                    try:
-                                        target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
-                                        target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").replace("😈", "").strip()
-                                    except Exception: pass
+    if res_data and res_data.get("ok") and res_data.get("result"):
+        chat_data = load_live_chat()
+        found_new = False
+        
+        for item in res_data["result"]:
+            update_id = item["update_id"]
+            if update_id > last_update_id:
+                last_update_id = update_id
+                
+                msg = item.get("message", {})
+                if str(msg.get("chat", {}).get("id")) == str(tg_chat_id):
+                    text = msg.get("text", "")
+                    if text and not text.startswith("/"):
+                        target_company = "General Public"
+                        if "reply_to_message" in msg:
+                            orig_text = msg["reply_to_message"].get("text", "")
+                            if "MESSAGE FROM" in orig_text:
+                                try:
+                                    target_company = orig_text.split("MESSAGE FROM ")[1].split(":")[0].strip()
+                                    target_company = target_company.replace("*", "").replace("🦊", "").replace("💖", "").replace("😈", "").strip()
+                                except Exception: pass
+                        
+                        if target_company not in chat_data:
+                            chat_data[target_company] = []
                             
-                            if target_company not in chat_data:
-                                chat_data[target_company] = []
-                                
-                            chat_data[target_company].append({
-                                "role": "assistant",
-                                "company": "Adem (Admin)",
-                                "content": text,
-                                "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
-                                "unix_time": time.time()
-                            })
-                            found_new = True
-            
-            if found_new:
-                save_live_chat(chat_data)
-                fresh_config["telegram_last_update_id"] = last_update_id
-                save_config(fresh_config)
-                app_config["telegram_last_update_id"] = last_update_id
-    except Exception: pass
+                        chat_data[target_company].append({
+                            "role": "assistant",
+                            "company": "Adem (Admin)",
+                            "content": text,
+                            "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
+                            "unix_time": time.time()
+                        })
+                        found_new = True
+        
+        if found_new:
+            save_live_chat(chat_data)
+            fresh_config["telegram_last_update_id"] = last_update_id
+            save_config(fresh_config)
+            app_config["telegram_last_update_id"] = last_update_id
 
 def increment_metric(metric, value=None):
     data = load_analytics()
@@ -707,10 +724,12 @@ if not st.session_state.app_initialized:
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
+            send_webhook_alert("💖 WIFE MODE ATTEMPTED: Sara is entering security verification...")
             st.session_state.wife_auth_pending = True
             st.rerun()
             
         elif clean_input.lower() == "egi":
+            send_webhook_alert("😈 EGI MODE ATTEMPTED: In-law verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -730,9 +749,7 @@ if not st.session_state.app_initialized:
                 
         else:
             target_name = clean_input if clean_input else "General Public"
-            
-            # 🔥 Send synchronous webhook alert right here, explicitly avoiding formatting issues
-            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den!")
+            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den! 🎯")
             
             increment_metric("total_visits")
             if clean_input: 
@@ -1405,12 +1422,12 @@ if st.session_state.is_admin:
                         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
                         tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
                         try:
-                            del_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
-                            res = requests.get(del_url, timeout=5).json()
-                            if res.get("ok"):
+                            # Use curl bypass for webhook clearing too just in case!
+                            res_data = execute_curl_request(f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true", method="GET")
+                            if res_data and res_data.get("ok"):
                                 st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
                             else:
-                                st.error(f"Failed to clear webhook: {res.get('description')}")
+                                st.error(f"Failed to clear webhook: {res_data.get('description', 'Unknown Error')}")
                         except Exception as e:
                             st.error(f"Error connecting: {e}")
                     else:
