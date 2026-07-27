@@ -3,6 +3,8 @@ import datetime
 import json
 import os
 import random
+import re
+import urllib.request
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -177,7 +179,6 @@ def extract_and_store_sara_memories(user_msg, bot_msg):
 
 app_config = load_config()
 
-# AGGRESSIVE SANITIZER: Destroys hidden spaces, newlines, and quotes that break URLs
 def get_secret_val(key_name, default=""):
     val = default
     try:
@@ -191,14 +192,14 @@ def get_secret_val(key_name, default=""):
         val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
         
     if val:
-        # Strip invisible newlines, spaces, and quotes
+        # Strip all basic invisible newlines and spaces
         return val.replace('"', '').replace("'", "").replace('\n', '').replace('\r', '').replace(' ', '').strip()
     return default
 
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
-# --- NEURAL PAGER (WEBHOOK SYSTEM WITH DIAGNOSTIC RETURN) ---
+# --- NEURAL PAGER (WEBHOOK SYSTEM WITH DIAGNOSTIC RETURN & FALLBACK) ---
 def send_webhook_alert(message, return_debug=False):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
@@ -214,28 +215,37 @@ def send_webhook_alert(message, return_debug=False):
         
     if tg_token.lower().startswith("bot"): 
         tg_token = tg_token[3:]
+        
+    # ABSOLUTE REGEX SANITIZER: Destroys ANY hidden/invisible character
+    tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
+    tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
     
     # FIX: Telegram's API crashes silently if Markdown has unclosed asterisks.
     safe_message = message.replace("**", "").replace("*", "")
+    tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
+    payload = {"chat_id": tg_chat_id, "text": f"🦊 KITSUNE PAGER:\n{safe_message}"}
     
     try:
-        tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
-        payload = {
-            "chat_id": tg_chat_id, 
-            "text": f"🦊 KITSUNE PAGER:\n{safe_message}"
-        }
         res = requests.post(tg_url, json=payload, timeout=5)
         res_data = res.json()
         
         if res_data.get("ok"):
-            if return_debug: return True, "Message sent successfully!"
+            if return_debug: return True, "Message sent successfully via Requests!"
             return True
         else:
             err_msg = f"Telegram API Error ({res.status_code}): {res_data.get('description', 'Unknown Error')}"
             if return_debug: return False, err_msg
             return False
     except Exception as e:
-        if return_debug: return False, f"Network exception: {str(e)}"
+        # FALLBACK ENGINE: Bypasses python 'requests' adapters if they are corrupted
+        try:
+            req = urllib.request.Request(tg_url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                if response.status == 200:
+                    if return_debug: return True, "Message sent successfully via urllib fallback!"
+                    return True
+        except Exception as fallback_e:
+            if return_debug: return False, f"Network exception (requests & urllib failed): {str(e)} | {str(fallback_e)}"
         return False
 
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
@@ -244,6 +254,9 @@ def sync_telegram_replies():
     tg_chat_id = get_secret_val("telegram_chat_id")
     if not tg_token or not tg_chat_id: return
     if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+    
+    tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
+    tg_chat_id = re.sub(r'[^0-9-]', '', tg_chat_id)
     
     fresh_config = load_config()
     last_update_id = fresh_config.get("telegram_last_update_id", 0)
@@ -718,8 +731,8 @@ if not st.session_state.app_initialized:
         else:
             target_name = clean_input if clean_input else "General Public"
             
-            # 🔥 Send synchronous webhook alert right here, stripped of formatting
-            send_webhook_alert(f"🎯 TARGET ACQUIRED: {target_name} has entered the digital den!")
+            # 🔥 Send synchronous webhook alert right here, explicitly avoiding formatting issues
+            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den!")
             
             increment_metric("total_visits")
             if clean_input: 
@@ -871,7 +884,7 @@ with st.sidebar:
         st.session_state.agentic_memory = ""
         st.session_state.messages = []
         if "session_start_time" in st.session_state: del st.session_state["session_start_time"]
-        st.query_params.clear() # Purges lingering initialized=true flag
+        st.query_params.clear()
         st.rerun()
 
 # --- HERO SECTION & CUSTOM RADAR CHARTS ---
@@ -1390,6 +1403,7 @@ if st.session_state.is_admin:
                     tg_token = get_secret_val("telegram_token")
                     if tg_token:
                         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+                        tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
                         try:
                             del_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
                             res = requests.get(del_url, timeout=5).json()
