@@ -208,11 +208,15 @@ def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
 # --- OS-LEVEL NETWORK BYPASS ENGINE ---
-def execute_curl_telegram_get(tg_token, tg_chat_id, text):
+def execute_curl_telegram_get(tg_token, tg_chat_id="", text="", clear_webhook=False):
     """Uses OS curl with a GET request to completely bypass Python's corrupted SSL proxy environment"""
     try:
-        encoded_text = urllib.parse.quote(text)
-        url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage?chat_id={tg_chat_id}&text={encoded_text}"
+        if clear_webhook:
+            url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
+        else:
+            encoded_text = urllib.parse.quote(text)
+            url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage?chat_id={tg_chat_id}&text={encoded_text}"
+            
         # -k bypasses OS-level SSL verification issues just in case
         curl_cmd = ["curl", "-k", "-s", url]
         res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=5)
@@ -521,7 +525,7 @@ st.markdown("""
     .fade-text-in { animation: cyberFadeIn 1s forwards; }
 
     .text-green-glow { text-align: center; color: #00FF00 !important; font-weight: 600; text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.2); animation: successPulse 1s infinite alternate; }
-    @keyframes successPulse { 0% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.4); } 100% { text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 30px rgba(0, 255, 0, 0.4); } }
+    @keyframes successPulse { 0% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.4); } 100% { text-shadow: 0 0 20px rgba(255, 0, 255, 0.9), 0 0 30px rgba(0, 255, 0, 0.4); } }
     .text-red-glow { text-align: center; color: #FF0000 !important; font-weight: 700; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.6), 0 0 20px rgba(255, 0, 0, 0.3); animation: alertPulse 1s infinite alternate; }
     @keyframes alertPulse { 0% { text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); } 100% { text-shadow: 0 0 20px rgba(255, 0, 1), 0 0 30px rgba(255, 0, 0, 0.6); } }
 
@@ -1438,7 +1442,7 @@ if st.session_state.is_admin:
                         if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
                         tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
                         try:
-                            res_data = execute_curl_telegram_get(tg_token, "", "test", clear_webhook=True)
+                            res_data = execute_curl_telegram_get(tg_token, clear_webhook=True)
                             if res_data and res_data.get("ok"):
                                 st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
                             else:
