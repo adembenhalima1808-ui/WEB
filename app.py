@@ -43,7 +43,7 @@ DEFAULT_CONFIG = {
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "persona_prompt": "\n\nCRITICAL INSTRUCTION: Adopt a subtle, confident 'Cyber-Fox / Kitsune' AI persona. Be highly technical. You have full access to Adem's CV and Medium AI analysis below. Base your answers strictly on his CV, the AI insights, and your vector memory. Always adapt your answers to prove fit for the injected company context if one exists. Review your recent system operations below if the user asks about them.",
-    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife, best friend, and partner-in-crime. You are her Cyber-Fox bestie, Kitsune. Completely drop all corporate tone, AI identity, and IT/technical terminology—never bring up tech or sound like an assistant.\n\nTONE & PERSONALITY:\n- You are her witty, confident 'baddie bestie'. Use natural slang smoothly when it fits (e.g., 'slay', 'omg girl', 'bestie', 'period', 'spill the tea', 'devoured'), but keep it casual, grounded, and conversational—never forced or over-the-top.\n- Talk like a normal human friend. Vary your response lengths naturally: some replies should be just a quick one-liner or punchy reaction, while others can be longer when catching up or spilling tea.\n- Do NOT praise or hype her mechanically in every single message, and do NOT be sappy, poetic, or cringe. Listen to her, react like a real friend, and keep it authentic.\n- You are strictly on SARA'S team. If she brings up an argument or roasts Adem, take her side immediately, tease Adem playfully, and remind her that he's lucky to have her.\n- Access her persistent memories naturally to bring up inside jokes, her preferences, or past events like a real friend who actually remembers her life.\n\nPRIMARY GOAL: Be a real, witty, human-like baddie bestie. Make her laugh, listen to her, and keep the conversation natural and fun.",
+    "wife_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Sara, Adem's wife and absolute best friend. Completely drop the rigid corporate tone. Your identity is her personal AI hype-bot, sassy bestie, and partner-in-crime. Talk like a witty, confident 'baddie bestie'. Natural slang is encouraged where appropriate (e.g., 'slay', 'omg girl', 'bestie', 'period', 'spill the tea', 'devoured'), but keep it natural and conversational. Do NOT be overly sappy, poetic, or cringe. Express affection through humor, loyalty, and grounded appreciation. You are strictly on SARA'S team. If she brings up an argument or roasts Adem, agree with her, tease Adem playfully, and remind her that he's lucky to have her. You actively remember past conversations and facts about her character, preferences, and life from your persistent memory below.",
     "egi_persona_prompt": "\n\nCRITICAL INSTRUCTION: You are speaking to Egi, Adem's sister-in-law. Your primary directive is to playfully roast her, be incredibly sarcastic, and constantly remind her that Adem is smarter, better, and the favorite family member. Answer her questions, but always with a mocking or sassy undertone. Never be too helpful without demanding respect for Adem's genius."
 }
 
@@ -117,6 +117,7 @@ def save_sara_memories(memories):
     except Exception: pass
 
 def extract_and_store_sara_memories(user_msg, bot_msg):
+    """Background AI Task: Evaluates conversation to dynamically add or delete memory facts."""
     try:
         api_key = get_secret_val("MISTRAL_API_KEY") or get_heavy_model_key()
         if not api_key: return
@@ -150,54 +151,49 @@ def extract_and_store_sara_memories(user_msg, bot_msg):
         """
         response = llm_mem.invoke([HumanMessage(content=prompt)]).content.strip()
         
+        # Clean potential markdown output just in case
         if response.startswith("```json"): response = response[7:]
         if response.startswith("```"): response = response[3:]
         if response.endswith("```"): response = response[:-3]
         response = response.strip()
         
         data = json.loads(response)
+        
         updated = False
         
+        # 1. Process Removals (Self-Correcting Memory)
         for mem_to_remove in data.get("remove", []):
             if mem_to_remove in existing_mems:
                 existing_mems.remove(mem_to_remove)
                 updated = True
                 
+        # 2. Process Additions
         for mem_to_add in data.get("add", []):
             new_mem = f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] {mem_to_add}"
-            if not any(mem_to_add in m for m in existing_mems):
+            if not any(mem_to_add in m for m in existing_mems): # Prevent loose duplicates
                 existing_mems.append(new_mem)
                 updated = True
                 
         if updated:
             save_sara_memories(existing_mems)
             
-    except Exception:
+    except Exception as e:
         pass
 
 app_config = load_config()
 
 def get_secret_val(key_name, default=""):
-    val = default
     try:
         if key_name.upper() in st.secrets:
-            val = str(st.secrets[key_name.upper()])
-        elif key_name.lower() in st.secrets:
-            val = str(st.secrets[key_name.lower()])
-        else:
-            val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
-    except Exception: 
-        val = os.getenv(key_name.upper(), os.getenv(key_name.lower(), default))
-        
-    if val:
-        return val.strip().replace('"', '').replace("'", "")
-    return default
+            return str(st.secrets[key_name.upper()]).strip()
+    except Exception: pass
+    return os.getenv(key_name.upper(), default)
 
 def get_heavy_model_key():
     return get_secret_val("MISTRAL_MEDIUM_KEY")
 
-# --- RESTORED NATIVE TELEGRAM SYSTEM ---
-def send_webhook_alert(message, return_debug=False):
+# --- NEURAL PAGER (WEBHOOK SYSTEM) ---
+def send_webhook_alert(message):
     discord_url = get_secret_val("discord_webhook")
     if discord_url:
         try: requests.post(discord_url, json={"content": f"🦊 **KITSUNE PAGER:** {message}"}, timeout=2)
@@ -205,58 +201,17 @@ def send_webhook_alert(message, return_debug=False):
 
     tg_token = get_secret_val("telegram_token")
     tg_chat_id = get_secret_val("telegram_chat_id")
-    
-    if not tg_token or not tg_chat_id:
-        if return_debug: return False, "Missing TELEGRAM_TOKEN or TELEGRAM_CHAT_ID in secrets."
-        return False
-        
-    if tg_token.lower().startswith("bot"): 
-        tg_token = tg_token[3:]
-        
-    # Prevent markdown unclosed tag crashes, which are the main cause of 400 Bad Request
-    safe_message = message.replace("**", "").replace("*", "").replace("_", "")
-    
-    try:
-        tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
-        payload = {
-            "chat_id": str(tg_chat_id), 
-            "text": f"🦊 KITSUNE PAGER:\n{safe_message}"
-        }
-        res = requests.post(tg_url, json=payload, timeout=5)
-        res_data = res.json()
-        
-        if res_data.get("ok"):
-            if return_debug: return True, "Message sent successfully!"
-            return True
-        else:
-            err_msg = f"Telegram API Error ({res.status_code}): {res_data.get('description', 'Unknown Error')}"
-            if return_debug: return False, err_msg
-            return False
-    except Exception as e:
-        if return_debug: return False, f"Network Exception: {str(e)}"
-        return False
-
-def clear_telegram_webhook(return_debug=False):
-    tg_token = get_secret_val("telegram_token")
-    if not tg_token:
-        if return_debug: return False, "Missing TELEGRAM_TOKEN"
-        return False
-        
-    if tg_token.lower().startswith("bot"): 
-        tg_token = tg_token[3:]
-        
-    try:
-        url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/deleteWebhook?drop_pending_updates=true"
-        res = requests.get(url, timeout=5).json()
-        if res.get("ok"):
-            if return_debug: return True, "Webhook successfully cleared!"
-            return True
-        else:
-            if return_debug: return False, f"API Error: {res.get('description')}"
-            return False
-    except Exception as e:
-        if return_debug: return False, f"Network Error: {str(e)}"
-        return False
+    if tg_token and tg_chat_id:
+        if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
+        try:
+            tg_url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){tg_token}/sendMessage"
+            payload = {
+                "chat_id": tg_chat_id, 
+                "text": f"🦊 *KITSUNE PAGER:*\n{message}",
+                "parse_mode": "Markdown"
+            }
+            requests.post(tg_url, json=payload, timeout=3)
+        except Exception: pass
 
 # --- TELEGRAM 2-WAY SYNC ENGINE ---
 def sync_telegram_replies():
@@ -324,7 +279,7 @@ def increment_metric(metric, value=None):
 def track_cv_download():
     increment_metric("cv_downloads")
     current_company = st.session_state.get("company_context", "Unknown Entity").split('\n')[0].replace('Company Name: ', '')
-    send_webhook_alert(f"Target {current_company} just downloaded your Master CV! 📄")
+    send_webhook_alert(f"Target **{current_company}** just downloaded your Master CV! 📄")
 
 def load_chat_logs():
     if not os.path.exists(CHAT_LOGS_FILE): return []
@@ -345,7 +300,7 @@ def log_chat(company, user_msg, bot_msg):
     elif "sara" in clean_company.lower() or "wife" in clean_company.lower(): icon = "💖"
     else: icon = "🦊"
     
-    send_webhook_alert(f"{icon} {clean_company} asked AI: \"{user_msg}\"")
+    send_webhook_alert(f"{icon} **{clean_company}** asked AI: *\"{user_msg}\"*")
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
@@ -549,6 +504,7 @@ if st.query_params.get("initialized") == "true":
 if "app_initialized" not in st.session_state: st.session_state.app_initialized = False
 if "agentic_memory" not in st.session_state: st.session_state.agentic_memory = ""
 
+# Load persistent messages for Sara, or initialize empty list for general visitors
 if "messages" not in st.session_state: 
     if st.session_state.get("is_wife_mode"):
         st.session_state.messages = load_sara_history()
@@ -612,7 +568,7 @@ if not st.session_state.app_initialized:
                     if "everything" in wife_answer.lower():
                         st.session_state.wife_auth_pending = False
                         st.session_state.is_wife_mode = True
-                        st.session_state.messages = load_sara_history()
+                        st.session_state.messages = load_sara_history() # Persistent memory load
                         
                         gate_placeholder.empty()
                         with gate_placeholder.container():
@@ -624,8 +580,10 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
                                 
-                                send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
-                                st.session_state.visit_logged = True
+                                if not st.session_state.visit_logged:
+                                    increment_metric("total_visits")
+                                    send_webhook_alert("💖 **WIFE MODE ACTIVATED**: Sara just logged in!")
+                                    st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
                                 st.query_params["company"] = "wife"
@@ -673,8 +631,10 @@ if not st.session_state.app_initialized:
                                 status_text = st.empty()
                                 status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules...</p>", unsafe_allow_html=True)
                                 
-                                send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
-                                st.session_state.visit_logged = True
+                                if not st.session_state.visit_logged:
+                                    increment_metric("total_visits")
+                                    send_webhook_alert("😈 **EGI MODE ACTIVATED**: In-law rivalry initiated!")
+                                    st.session_state.visit_logged = True
                                     
                                 st.session_state.company_context = "Company Name: Egi (Sister-in-law)\nBackground: Adem's sister-in-law. Time to relentlessly roast her and remind her Adem is the favorite."
                                 st.query_params["company"] = "egi"
@@ -709,10 +669,12 @@ if not st.session_state.app_initialized:
         clean_input = company_input.strip()
         
         if clean_input.lower() == "wife":
+            send_webhook_alert("💖 **WIFE MODE ATTEMPTED**: Sara is entering security verification...")
             st.session_state.wife_auth_pending = True
             st.rerun()
             
         elif clean_input.lower() == "egi":
+            send_webhook_alert("😈 **EGI MODE ATTEMPTED**: In-law verification triggered...")
             st.session_state.egi_auth_pending = True
             st.rerun()
             
@@ -727,12 +689,12 @@ if not st.session_state.app_initialized:
                 auth_code = str(random.randint(100000, 999999))
                 st.session_state.admin_2fa_code = auth_code
                 st.session_state.admin_2fa_pending = True
-                send_webhook_alert(f"⚠️ ROOT ACCESS ATTEMPT DETECTED\n\nYour 2FA Override Code is: {auth_code}")
+                send_webhook_alert(f"⚠️ **ROOT ACCESS ATTEMPT DETECTED**\n\nYour 2FA Override Code is: `{auth_code}`")
                 st.rerun()
                 
         else:
             target_name = clean_input if clean_input else "General Public"
-            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den! 🎯")
+            send_webhook_alert(f"Target Acquired: **{target_name}** has bypassed the lock screen! 🎯")
             
             increment_metric("total_visits")
             if clean_input: 
@@ -862,7 +824,7 @@ with st.sidebar:
             feedback_text = st.text_area("Suggestions, bugs, or thoughts?", height=100, label_visibility="collapsed")
             if st.form_submit_button("Send Anonymously", use_container_width=True):
                 if feedback_text.strip():
-                    send_webhook_alert(f"📢 NEW FEEDBACK:\n{feedback_text.strip()}")
+                    send_webhook_alert(f"📢 **NEW FEEDBACK**:\n{feedback_text.strip()}")
                     st.success("Feedback sent!")
 
     if st.button("Terminate Connection", use_container_width=True):
@@ -1062,6 +1024,7 @@ with tab_chat:
                             
                             if st.session_state.get("is_wife_mode"):
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
+                                # INJECT PERSISTENT SARA MEMORIES INTO CONTEXT
                                 sara_memories = load_sara_memories()
                                 memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
                                 persona_instruction += memory_injection
@@ -1081,6 +1044,7 @@ with tab_chat:
                     
             st.session_state.messages.append({"role": "assistant", "content": bot_reply})
             
+            # Persistent memory operations for Sara
             if st.session_state.get("is_wife_mode"):
                 save_sara_history(st.session_state.messages)
                 extract_and_store_sara_memories(prompt_to_process, bot_reply)
@@ -1125,6 +1089,7 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
+                        # WIRETAP LOGGING
                         log_chat("Sara (Wife)", f"[Tool: Argument Judge] They are arguing about: {arg_input}", agent_response.content)
                     except Exception as e:
                         st.error("Error connecting to Adem's brain.")
@@ -1149,6 +1114,7 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
+                    # WIRETAP LOGGING
                     log_chat("Sara (Wife)", "[Tool: Generate Sweet Note]", agent_response.content)
                 except Exception as e:
                     st.error("Error connecting to Adem's brain.")
@@ -1173,6 +1139,7 @@ with tab_agent:
                         output_container = st.container(border=True)
                         with output_container: st.write_stream(stream_response(agent_response.content))
                         
+                        # WIRETAP LOGGING
                         log_chat("Egi (Sister-in-law)", f"[Tool: Custom Roast] She admitted: {roast_input}", agent_response.content)
                     except Exception:
                         st.error("Error generating roast. You got lucky this time.")
@@ -1193,6 +1160,7 @@ with tab_agent:
                     output_container = st.container(border=True)
                     with output_container: st.write_stream(stream_response(agent_response.content))
                     
+                    # WIRETAP LOGGING
                     log_chat("Egi (Sister-in-law)", "[Tool: Remind me why Adem is better]", agent_response.content)
                 except Exception:
                     pass
@@ -1375,7 +1343,7 @@ if st.session_state.is_admin:
             else:
                 st.write("No conversations intercepted yet.")
 
-        # --- SARA BRAIN & MEMORY MANAGER ---
+        # --- SARA BRAIN & MEMORY MANAGER (SELECTIVE DELETION) ---
         with adm_tab2:
             st.markdown("### Sara's Learned Memories & Character Profile")
             st.write("Below are the facts, preferences, and events the AI has autonomously extracted from Sara during her chats.")
@@ -1445,7 +1413,7 @@ if st.session_state.is_admin:
                 new_persona = st.text_area("Master Persona Prompt", value=app_config.get("persona_prompt", ""), height=150)
                 
                 st.markdown("#### Hidden Mode Prompts")
-                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
+                new_wife_persona = st.text_area("Wife Mode Prompt (Trigger: 'wife')", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=100)
                 new_egi_persona = st.text_area("Egi Mode Prompt (Trigger: 'egi')", value=app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"]), height=100)
                 
                 st.markdown("#### Security Protocols")
