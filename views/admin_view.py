@@ -3,8 +3,9 @@ import datetime
 import json
 import os
 import time
+import requests
 from core.utils import load_analytics, load_chat_logs, get_secret_val, save_config, DEFAULT_CONFIG
-from core.telegram_engine import send_webhook_alert, execute_curl_telegram_get
+from core.telegram_engine import send_webhook_alert
 from core.memory_engine import load_sara_memories, save_sara_memories, save_sara_history
 
 def render(app_config):
@@ -74,7 +75,8 @@ def render(app_config):
                     if tg_token.lower().startswith("bot"): tg_token = tg_token[3:]
                     tg_token = re.sub(r'[^a-zA-Z0-9:-]', '', tg_token)
                     try:
-                        res_data = execute_curl_telegram_get(tg_token, clear_webhook=True)
+                        url = f"https://api.telegram.org/bot{tg_token}/deleteWebhook?drop_pending_updates=true"
+                        res_data = requests.get(url, timeout=5).json()
                         if res_data and res_data.get("ok"): st.success("Telegram Webhook purged! getUpdates polling is now unblocked.")
                         else: st.error(f"Failed to clear webhook: {res_data.get('description', 'Unknown Error')}")
                     except Exception as e: st.error(f"Error connecting: {e}")
