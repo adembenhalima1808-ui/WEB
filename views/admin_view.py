@@ -12,6 +12,13 @@ from core.telegram_engine import send_webhook_alert
 from core.memory_engine import save_sara_history
 
 def render(app_config):
+    # Initialize simulation session state variables
+    if "sim_active" not in st.session_state:
+        st.session_state.sim_active = False
+        st.session_state.sim_chat = []
+        st.session_state.sim_eval = ""
+        st.session_state.sim_new_prompt = ""
+
     st.markdown("### ROOT COMMAND CENTER")
     adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics", "Agentic Training Simulator", "CMS & Identity", "Vector Brain Injection"])
     
@@ -87,19 +94,23 @@ def render(app_config):
 
     with adm_tab3:
         st.markdown("### Agentic Training Simulator")
-        st.write("Run a simulated interview loop. An AI Recruiter will interrogate the Kitsune Agent, and a Master Evaluator will score the response and suggest prompt adjustments.")
+        st.write("Run a simulated interview loop. An AI Recruiter (aware it's visiting your portfolio) will interrogate your Agent. A Master Evaluator will then score the response and provide an optimized prompt.")
         
         target_role = st.text_input("Target Company & Role", value="Senior AI Engineer at Datadog")
         
         if st.button("Start Simulation Sequence", type="primary"):
-            with st.spinner("AI Recruiter generating question..."):
+            st.session_state.sim_active = True
+            st.session_state.sim_chat = []
+            st.session_state.sim_eval = ""
+            st.session_state.sim_new_prompt = ""
+            
+            with st.spinner("AI Recruiter is analyzing your profile..."):
                 try:
                     llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=get_secret_val("MISTRAL_API_KEY"))
-                    q_prompt = f"You are a strict technical recruiter hiring a {target_role}. Ask one highly challenging, specific technical interview question to test the candidate's system design and practical AI experience. Ask the question directly."
+                    q_prompt = f"You are a recruiter from {target_role} visiting Adem Ben Halima's AI portfolio website. You know you are speaking to his AI digital twin. Ask ONE brief, human-like interview question about Adem's specific experience, projects, or why he fits this role. Do not ask generic coding questions. Ask the question directly."
                     question = llm_fast.invoke([HumanMessage(content=q_prompt)]).content.strip()
                     
-                    st.markdown("#### AI Recruiter")
-                    st.info(question)
+                    st.session_state.sim_chat.append({"role": "Recruiter", "content": question})
                     
                     rag_chain = initialize_rag_system()
                     resume_raw = get_resume_text()
@@ -109,12 +120,10 @@ def render(app_config):
                     response = rag_chain.invoke({"input": question, "company_context": full_context})
                     answer = response["answer"]
                     
-                    st.markdown("#### Kitsune Agent (Candidate)")
-                    st.success(answer)
+                    st.session_state.sim_chat.append({"role": "Kitsune", "content": answer})
                     
                     llm_heavy = ChatMistralAI(model="mistral-medium-latest", temperature=0.2, mistral_api_key=get_heavy_model_key())
-                    eval_prompt = f"""
-                    You are a Master AI Evaluator. Review this interview exchange for the role of {target_role}:
+                    eval_prompt = f"""You are a Master AI Evaluator. Review this interview exchange for the role of {target_role}:
                     
                     QUESTION: {question}
                     KITSUNE'S ANSWER: {answer}
@@ -122,19 +131,58 @@ def render(app_config):
                     CURRENT MASTER PROMPT:
                     {persona}
                     
-                    Evaluate Kitsune's answer based on technical accuracy, confidence, and adherence to the persona.
-                    Provide exactly:
-                    1. SCORE: (Out of 100)
-                    2. CRITIQUE: (What was missing, weak, or overly robotic)
-                    3. SUGGESTED PROMPT ADJUSTMENT: (Provide a slightly modified version of the Master Prompt to fix these flaws)
-                    """
-                    evaluation = llm_heavy.invoke([HumanMessage(content=eval_prompt)]).content
+                    Evaluate Kitsune's answer based on technical accuracy, conversational flow, and adherence to the persona.
+                    Provide your response EXACTLY in this format:
                     
-                    st.markdown("#### Master Evaluator")
-                    st.warning(evaluation)
+                    SCORE: [Score out of 100]
                     
+                    CRITIQUE: [Your critique of what was missing, weak, or overly robotic]
+                    
+                    SUGGESTED_PROMPT:
+                    [The complete, updated master persona prompt text goes here. Keep the core instructions but improve the behavioral logic based on your critique. Do NOT use markdown code blocks for the prompt text.]"""
+                    
+                    eval_raw = llm_heavy.invoke([HumanMessage(content=eval_prompt)]).content
+                    
+                    if "SUGGESTED_PROMPT:" in eval_raw:
+                        parts = eval_raw.split("SUGGESTED_PROMPT:")
+                        st.session_state.sim_eval = parts[0].strip()
+                        st.session_state.sim_new_prompt = parts[1].strip()
+                    else:
+                        st.session_state.sim_eval = eval_raw
+                        st.session_state.sim_new_prompt = ""
+                        
                 except Exception as e:
                     st.error(f"Simulation Error: {e}")
+                    st.session_state.sim_active = False
+
+        if st.session_state.sim_active:
+            st.markdown("#### Interview Simulation Log")
+            chat_container = st.container(height=350, border=True)
+            with chat_container:
+                for msg in st.session_state.sim_chat:
+                    if msg["role"] == "Recruiter":
+                        with st.chat_message("user", avatar="🧑‍💼"):
+                            st.markdown(f"**Recruiter:** {msg['content']}")
+                    else:
+                        with st.chat_message("assistant", avatar="🦊"):
+                            st.markdown(f"**Kitsune Agent:** {msg['content']}")
+            
+            if st.session_state.sim_eval:
+                st.markdown("#### Evaluation")
+                st.warning(st.session_state.sim_eval)
+                
+            if st.session_state.sim_new_prompt:
+                st.markdown("#### Suggested Master Prompt")
+                st.info(st.session_state.sim_new_prompt)
+                
+                if st.button("Implement Advised Prompt", type="primary", use_container_width=True):
+                    app_config["persona_prompt"] = st.session_state.sim_new_prompt
+                    save_config(app_config)
+                    st.session_state.sim_active = False
+                    st.cache_data.clear()
+                    st.success("Master Persona Prompt updated successfully! Rebooting...")
+                    time.sleep(1.5)
+                    st.rerun()
 
     with adm_tab4:
         st.info("Security Enforcement Active: API keys locked to Secrets.")
