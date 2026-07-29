@@ -10,7 +10,7 @@ from core.memory_engine import load_sara_memories, save_sara_memories, save_sara
 
 def render(app_config):
     st.markdown("### ROOT COMMAND CENTER")
-    adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics 🛠️", "Sara's Core Memories 💖", "CMS & Identity", "Vector Brain Injection"])
+    adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics", "Sara's Core Memories", "CMS & Identity", "Vector Brain Injection"])
     
     with adm_tab1:
         analytics_data = load_analytics()
@@ -28,7 +28,7 @@ def render(app_config):
         st.markdown("---")
         col_wire1, col_wire2 = st.columns([3, 1])
         col_wire1.markdown("#### Live Chat Wiretap Logs (AI Bot)")
-        if col_wire2.button("🔄 Refresh Logs", use_container_width=True):
+        if col_wire2.button("Refresh Logs", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
@@ -41,9 +41,9 @@ def render(app_config):
                 grouped_logs[comp].append(log)
             
             for comp, logs in grouped_logs.items():
-                if "sara" in comp.lower() or "wife" in comp.lower(): expander_label, user_color = f"💖 Intercepted: {comp}", "#FF1493"
-                elif "egi" in comp.lower(): expander_label, user_color = f"😈 Intercepted: {comp}", "#8A2BE2"
-                else: expander_label, user_color = f"🦊 Intercepted: {comp}", "#FF7A00"
+                if "sara" in comp.lower() or "wife" in comp.lower(): expander_label, user_color = f"Intercepted: {comp}", "#FF1493"
+                elif "egi" in comp.lower(): expander_label, user_color = f"Intercepted: {comp}", "#8A2BE2"
+                else: expander_label, user_color = f"Intercepted: {comp}", "#FF7A00"
                     
                 with st.expander(f"{expander_label} ({len(logs)} messages)"):
                     with st.container(height=350, border=False):
@@ -63,7 +63,7 @@ def render(app_config):
         with col_diag1:
             st.markdown("#### Test Telegram Alert Delivery")
             if st.button("Send Test Alert Message", use_container_width=True):
-                success, response_text = send_webhook_alert("🔔 TEST ALERT: Telegram connection verified from Kitsune Command Center!", return_debug=True)
+                success, response_text = send_webhook_alert("TEST ALERT: Telegram connection verified from Kitsune Command Center!", return_debug=True)
                 if success: st.success(f"SUCCESS: {response_text}")
                 else: st.error(f"FAILURE: {response_text}")
         with col_diag2:
@@ -118,7 +118,7 @@ def render(app_config):
             st.success("Wiped!"); st.rerun()
 
     with adm_tab4:
-        st.info("🔒 **Security Enforcement Active:** API keys locked to Secrets.")
+        st.info("Security Enforcement Active: API keys locked to Secrets.")
         with st.form("config_form"):
             new_title = st.text_input("Main Hero Title", value=app_config.get("title", ""))
             new_intro = st.text_area("Hero Introduction Text", value=app_config.get("intro_text", ""), height=100)

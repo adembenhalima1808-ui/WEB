@@ -62,22 +62,33 @@ st.markdown(f"""
     .social-link {{ display: flex; justify-content: center; align-items: center; flex: 1; color: #A1A1AA; text-decoration: none; padding: 12px; background-color: #050403; border: 1px solid rgba(255, 122, 0, 0.15); border-radius: 6px; transition: all 0.3s ease; }}
     .social-link svg {{ width: 24px; height: 24px; fill: currentColor; }}
     .social-link:hover {{ color: #FF7A00; border-color: #FF7A00; box-shadow: 0 0 10px rgba(255, 122, 0, 0.15); transform: translateY(-2px); }}
+    
     .reactor-icon {{ font-size: 7rem; text-align: center; display: block; margin-bottom: 10px; }}
     .reactor-sleeping {{ filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1)); animation: reactorBreathe 3s infinite ease-in-out; }}
     @keyframes reactorBreathe {{ 0%, 100% {{ transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); }} 50% {{ transform: scale(1.03); filter: grayscale(50%) drop-shadow(0 0 15px rgba(255,122,0,0.3)); }} }}
     .reactor-waking {{ animation: reactorBloom 1.5s forwards ease-in-out; }}
     @keyframes reactorBloom {{ 0% {{ transform: scale(1); opacity: 0; }} 15% {{ opacity: 1; }} 100% {{ transform: scale(1.15); filter: grayscale(0%) drop-shadow(0 0 60px rgba(255, 122, 0, 1)); opacity: 1; }} }}
+    
     .heart-waking {{ font-size: 8rem; text-align: center; display: block; filter: drop-shadow(0 0 20px rgba(255,20,147,0.8)); animation: heartbeat 1.5s infinite; }}
     @keyframes heartbeat {{ 0%, 30%, 100% {{ transform: scale(1); }} 15%, 45% {{ transform: scale(1.15); }} }}
+    
     .devil-waking {{ font-size: 8rem; text-align: center; display: block; filter: drop-shadow(0 0 20px rgba(138, 43, 226,0.8)); animation: devilbreathe 2s infinite alternate ease-in-out; }}
     @keyframes devilbreathe {{ 0% {{ transform: scale(1); filter: drop-shadow(0 0 10px rgba(138,43,226,0.5)); }} 100% {{ transform: scale(1.1); filter: drop-shadow(0 0 35px rgba(220,20,60,0.9)); }} }}
+    
     .fade-text-in {{ animation: cyberFadeIn 1s forwards; }}
     .text-red-glow {{ text-align: center; color: #FF0000 !important; font-weight: 700; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.6); animation: alertPulse 1s infinite alternate; }}
     @keyframes alertPulse {{ 0% {{ text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); }} 100% {{ text-shadow: 0 0 20px rgba(255, 0, 0, 0.9); }} }}
+    
+    .text-green-glow {{ text-align: center; color: #00FF00 !important; font-weight: 600; text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.2); animation: successPulse 1s infinite alternate; }}
+    @keyframes successPulse {{ 0% {{ text-shadow: 0 0 10px rgba(0, 255, 0, 0.4); }} 100% {{ text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 30px rgba(0, 255, 0, 0.4); }} }}
+
     .pulse-dot {{ display: inline-block; width: 10px; height: 10px; background-color: {app_config.get('status_color', '#FF7A00')} !important; border-radius: 50%; box-shadow: 0 0 0 0 rgba({r}, {g}, {b}, 0.7) !important; animation: pulseDynamic 1.8s infinite !important; margin-right: 8px; }}
     @keyframes pulseDynamic {{ 0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba({r}, {g}, {b}, 0.7); }} 70% {{ transform: scale(1); box-shadow: 0 0 0 8px rgba({r}, {g}, {b}, 0); }} 100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba({r}, {g}, {b}, 0); }} }}
+    
     .status-container-glow {{ margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #050200; border-radius: 6px; border: 1px solid rgba({r}, {g}, {b}, 0.4); box-shadow: 0 0 15px rgba({r}, {g}, {b}, 0.15), inset 0 0 10px rgba({r}, {g}, {b}, 0.05); }}
     .status-text-glow {{ font-size: 0.9rem; color: #F8FAFC; font-weight: 600; text-shadow: 0 0 8px rgba({r}, {g}, {b}, 0.6); }}
+    
+    .badge {{ display: inline-block; background: #050403 !important; color: #E4E4E7; border: 1px solid #3F2314; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; margin-right: 8px; margin-bottom: 8px; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -97,8 +108,8 @@ if st.query_params.get("initialized") == "true":
     if "company_context" not in st.session_state:
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
-        elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
-        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Adem's sister-in-law and Sara's sister. Time to relentlessly roast her and remind her Adem is the favorite."
+        elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife."
+        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Sara's sister and Adem's sister-in-law."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -129,19 +140,21 @@ if is_maintenance_on and not st.session_state.is_admin:
                     st.rerun()
         else:
             st.markdown("<span class='reactor-icon reactor-sleeping'>🦊</span>", unsafe_allow_html=True)
-            st.markdown("<h2 class='text-red-glow' style='text-align: center;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-top: -15px;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
             st.markdown(f"<div style='text-align: center; color: #A1A1AA; margin-bottom: 25px;'>{app_config.get('maintenance_reason', DEFAULT_CONFIG['maintenance_reason'])}</div>", unsafe_allow_html=True)
             
-            with st.expander("Admin Override Access"):
+            with st.expander("Admin Access"):
                 with st.form("maint_admin_form", clear_on_submit=True):
-                    admin_pass = st.text_input("Admin Override Command", type="password", placeholder="For admin access only.")
-                    if st.form_submit_button("Request 2FA OTP", use_container_width=True):
+                    admin_pass = st.text_input("Terminal", type="password", label_visibility="collapsed")
+                    col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
+                    if col_b2.form_submit_button("Execute", use_container_width=True):
                         if admin_pass.strip() == "sudo override":
                             auth_code = str(random.randint(100000, 999999))
                             st.session_state.update(admin_2fa_code=auth_code, admin_2fa_pending=True)
                             send_webhook_alert(f"⚠️ ROOT ACCESS ATTEMPT (Maintenance Mode)\n\n2FA Code: {auth_code}")
                             st.rerun()
-                        else: st.error("Invalid command.")
+                        else: 
+                            st.error("Access Denied.")
     st.stop()
 
 # --- LOCK SCREEN / GATEKEEPER ROUTING ---
@@ -182,10 +195,25 @@ if not st.session_state.app_initialized:
                     cancel_wife = col_btn2.form_submit_button("Abort", use_container_width=True)
                 if submit_wife:
                     if "everything" in wife_answer.lower():
-                        st.session_state.update(wife_auth_pending=False, is_wife_mode=True, messages=load_sara_history(), company_context="Company Name: Sara (Wife)\nBackground: Adem's beloved wife.", app_initialized=True, session_start_time=time.time())
+                        st.session_state.update(wife_auth_pending=False, is_wife_mode=True, messages=load_sara_history(), company_context="Company Name: Sara (Wife)\nBackground: Adem's beloved wife.")
+                        
+                        gate_placeholder.empty()
+                        with gate_placeholder.container():
+                            col_a, col_b, col_c = st.columns([1, 2, 1])
+                            with col_b:
+                                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                                st.markdown("<span class='heart-waking'>💖</span>", unsafe_allow_html=True)
+                                st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF1493; text-shadow: 0 0 15px rgba(255,20,147,0.6);'>Authentication Accepted: Welcome, Sara</h2>", unsafe_allow_html=True)
+                                status_text = st.empty()
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #FF69B4;'>Syncing profiles...</p>", unsafe_allow_html=True)
+                                send_webhook_alert("WIFE MODE ACTIVATED: Sara just logged in!")
+                                st.session_state.visit_logged = True
+                                time.sleep(1.2)
+                                status_text.markdown("<p style='text-align: center; color: #FF1493; font-weight: bold;'>Neural Link Established.</p>", unsafe_allow_html=True)
+                                time.sleep(2.0)
+                        
                         st.query_params.update(company="wife", initialized="true")
-                        send_webhook_alert("💖 WIFE MODE ACTIVATED: Sara just logged in!")
-                        st.session_state.visit_logged = True
+                        st.session_state.update(app_initialized=True, session_start_time=time.time())
                         st.rerun()
                     else: st.error("ACCESS DENIED.")
                 if cancel_wife: st.session_state.wife_auth_pending = False; st.rerun()
@@ -200,10 +228,25 @@ if not st.session_state.app_initialized:
                     cancel_egi = col_btn2.form_submit_button("Abort", use_container_width=True)
                 if submit_egi:
                     if "adem" in egi_answer.lower():
-                        st.session_state.update(egi_auth_pending=False, is_egi_mode=True, company_context="Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Adem's sister-in-law and Sara's sister.", app_initialized=True, session_start_time=time.time())
+                        st.session_state.update(egi_auth_pending=False, is_egi_mode=True, company_context="Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Sara's sister and Adem's sister-in-law.")
+                        
+                        gate_placeholder.empty()
+                        with gate_placeholder.container():
+                            col_a, col_b, col_c = st.columns([1, 2, 1])
+                            with col_b:
+                                st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                                st.markdown("<span class='devil-waking'>😈</span>", unsafe_allow_html=True)
+                                st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #8A2BE2; text-shadow: 0 0 15px rgba(138,43,226,0.6);'>Authentication Accepted: Welcome, Egi</h2>", unsafe_allow_html=True)
+                                status_text = st.empty()
+                                status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #DC143C;'>Loading sarcasm modules...</p>", unsafe_allow_html=True)
+                                send_webhook_alert("EGI MODE ACTIVATED: In-law rivalry initiated!")
+                                st.session_state.visit_logged = True
+                                time.sleep(1.2)
+                                status_text.markdown("<p style='text-align: center; color: #8A2BE2; font-weight: bold;'>Link Established. Prepare to be roasted.</p>", unsafe_allow_html=True)
+                                time.sleep(2.0)
+
                         st.query_params.update(company="egi", initialized="true")
-                        send_webhook_alert("😈 EGI MODE ACTIVATED: In-law rivalry initiated!")
-                        st.session_state.visit_logged = True
+                        st.session_state.update(app_initialized=True, session_start_time=time.time())
                         st.rerun()
                     else: st.error("ACCESS DENIED: Say his name.")
                 if cancel_egi: st.session_state.egi_auth_pending = False; st.rerun()
@@ -225,22 +268,36 @@ if not st.session_state.app_initialized:
             st.rerun()
         else:
             target_name = clean_input if clean_input else "General Public"
-            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den! 🎯")
+            send_webhook_alert(f"TARGET ACQUIRED: {target_name} has entered the digital den!")
             increment_metric("total_visits")
             if clean_input: increment_metric("companies_logged", clean_input)
             st.session_state.visit_logged = True
 
-            if clean_input:
-                try:
-                    headers = {"User-Agent": "Mozilla/5.0"}
-                    query = urllib.parse.quote(f"{clean_input} company overview tech stack")
-                    response = requests.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers)
-                    soup = BeautifulSoup(response.text, "html.parser")
-                    snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
-                    st.session_state.company_context = f"Company Name: {clean_input}\nBackground: {' '.join(snippets[:3])}"
-                except Exception: st.session_state.company_context = f"Company Name: {clean_input}\nBackground: Target locked."
-                st.query_params["company"] = clean_input
-            else: st.session_state.company_context = "General public evaluation."
+            gate_placeholder.empty()
+            with gate_placeholder.container():
+                col_a, col_b, col_c = st.columns([1, 2, 1])
+                with col_b:
+                    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
+                    st.markdown("<span class='reactor-icon reactor-waking'>🦊</span>", unsafe_allow_html=True)
+                    st.markdown("<h2 class='fade-text-in' style='text-align: center; margin-bottom: 5px; color: #FF7A00; text-shadow: 0 0 10px rgba(255,122,0,0.5);'>Authentication Accepted</h2>", unsafe_allow_html=True)
+                    status_text = st.empty()
+                    status_text.markdown("<p class='fade-text-in' style='text-align: center; color: #A1A1AA;'>Bypassing security protocols...</p>", unsafe_allow_html=True)
+                    
+                    if clean_input:
+                        try:
+                            headers = {"User-Agent": "Mozilla/5.0"}
+                            query = urllib.parse.quote(f"{clean_input} company overview tech stack")
+                            response = requests.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers)
+                            soup = BeautifulSoup(response.text, "html.parser")
+                            snippets = [a.text for a in soup.find_all('a', class_='result__snippet')]
+                            st.session_state.company_context = f"Company Name: {clean_input}\nBackground: {' '.join(snippets[:3])}"
+                        except Exception: st.session_state.company_context = f"Company Name: {clean_input}\nBackground: Target locked."
+                        st.query_params["company"] = clean_input
+                    else: st.session_state.company_context = "General public evaluation."
+                    
+                    time.sleep(0.5) 
+                    status_text.markdown("<p class='text-green-glow'>Neural Link Established. Booting Dashboard...</p>", unsafe_allow_html=True)
+                    time.sleep(1.8)
             
             st.session_state.update(app_initialized=True, session_start_time=time.time())
             st.query_params["initialized"] = "true"
@@ -257,7 +314,7 @@ with st.sidebar:
         st.caption("Best Husband in the World")
         st.markdown(f'<div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #1A050D; border-radius: 6px; border: 1px solid rgba(255, 20, 147, 0.4);"><div style="display: flex; align-items: center; margin-bottom: 4px;"><span class="pulse-dot" style="background-color:#FF1493!important;"></span><span style="font-size: 0.9rem; color: #FF1493; font-weight: 600;">DEDICATED TO SARA</span></div><span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Always by your side</span></div>', unsafe_allow_html=True)
     elif st.session_state.get("is_egi_mode"):
-        st.caption("The Favorite Family Member")
+        st.caption("Sara's Sister")
         st.markdown(f'<div style="margin-bottom: 15px; margin-top: 10px; padding: 12px; background: #10051A; border-radius: 6px; border: 1px solid rgba(138, 43, 226, 0.4);"><div style="display: flex; align-items: center; margin-bottom: 4px;"><span class="pulse-dot" style="background-color:#8A2BE2!important;"></span><span style="font-size: 0.9rem; color: #8A2BE2; font-weight: 600;">EGI DETECTED</span></div><span style="font-size: 0.8rem; color: #A1A1AA; margin-left: 18px;">📍 Far superior to you</span></div>', unsafe_allow_html=True)
     else:
         st.caption(app_config.get("sidebar_subtitle", "AI & Machine Learning Engineer"))
@@ -269,14 +326,14 @@ with st.sidebar:
                 st.download_button("Download Full CV", pdf_file.read(), "Adem_Ben_Halima_CV.pdf", "application/pdf", use_container_width=True)
         except Exception: pass
         st.divider()
-        st.markdown("### System Stack")
-        st.markdown("".join([f"<span class='badge'>{tech}</span>" for tech in extract_stack_from_resume(st.session_state.company_context)]), unsafe_allow_html=True)
+        st.markdown("### My Skills")
+        st.markdown(" ".join([f"<span class='badge'>{tech}</span>" for tech in extract_stack_from_resume(st.session_state.company_context)]), unsafe_allow_html=True)
     
     st.divider()
     st.markdown("""<div style="display: flex; gap: 10px;"><a href="https://linkedin.com/in/adembenhalima" target="_blank" class="social-link" title="LinkedIn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a><a href="https://github.com/adembenhalima" target="_blank" class="social-link" title="GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a></div>""", unsafe_allow_html=True)
     st.divider()
 
-    with st.expander("📬 Leave Feedback"):
+    with st.expander("Leave Feedback"):
         with st.form("feedback_form", clear_on_submit=True):
             feedback_text = st.text_area("Suggestions, bugs, or thoughts?", height=100, label_visibility="collapsed")
             if st.form_submit_button("Send Anonymously", use_container_width=True) and feedback_text.strip():

@@ -10,7 +10,7 @@ import datetime
 
 def render(app_config):
     st.markdown(f"# The Loser's Lounge")
-    st.markdown(f"**Role:** Second Favorite Family Member | **Location:** In Adem's Shadow")
+    st.markdown(f"**Role:** Sara's Sister | **Location:** In Adem's Shadow")
     st.write("Welcome to the roast room, Egi. Try not to cry.")
     
     st.markdown("### Egi's Flaw Radar")
