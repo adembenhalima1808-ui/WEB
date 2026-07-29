@@ -141,7 +141,10 @@ def render(app_config):
             new_wife_persona = st.text_area("Wife Mode Prompt", value=app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"]), height=150)
             new_egi_persona = st.text_area("Egi Mode Prompt", value=app_config.get("egi_persona_prompt", DEFAULT_CONFIG["egi_persona_prompt"]), height=100)
             
-            new_maintenance = st.checkbox("Enable Maintenance Mode", value=app_config.get("maintenance_mode", False))
+            st.markdown("#### Security & Maintenance Protocols")
+            new_maintenance = st.checkbox("Enable Maintenance Mode (Lock out ALL non-admins)", value=app_config.get("maintenance_mode", False))
+            new_maintenance_reason = st.text_area("Maintenance Notice Message", value=app_config.get("maintenance_reason", DEFAULT_CONFIG["maintenance_reason"]), height=80)
+            
             new_resume = st.file_uploader("Upload New Resume (PDF)", type=["pdf"], label_visibility="collapsed")
             
             if st.form_submit_button("Deploy Configuration Overrides", type="primary"):
@@ -150,7 +153,9 @@ def render(app_config):
                     "role_title": new_role_title, "location": new_location, "status_text": new_status,
                     "status_color": new_color, "human_comm_enabled": new_human_enabled, "refresh_rate": int(new_refresh_rate),
                     "persona_prompt": new_persona, "wife_persona_prompt": new_wife_persona,
-                    "egi_persona_prompt": new_egi_persona, "maintenance_mode": new_maintenance
+                    "egi_persona_prompt": new_egi_persona, 
+                    "maintenance_mode": new_maintenance,
+                    "maintenance_reason": new_maintenance_reason
                 })
                 save_config(app_config)
                 if new_resume is not None:

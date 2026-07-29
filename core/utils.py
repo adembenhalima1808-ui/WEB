@@ -23,6 +23,7 @@ DEFAULT_CONFIG = {
     "status_text": "Open to Opportunities",
     "status_color": "#FF7A00",
     "maintenance_mode": False,
+    "maintenance_reason": "System undergoing scheduled neural maintenance and pipeline optimization. Check back shortly.",
     "human_comm_enabled": True,
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
