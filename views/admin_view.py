@@ -4,13 +4,16 @@ import json
 import os
 import time
 import requests
-from core.utils import load_analytics, load_chat_logs, get_secret_val, save_config, DEFAULT_CONFIG
+from langchain_mistralai import ChatMistralAI
+from langchain_core.messages import HumanMessage
+from core.rag_engine import initialize_rag_system
+from core.utils import load_analytics, load_chat_logs, get_secret_val, get_heavy_model_key, save_config, DEFAULT_CONFIG, get_resume_text
 from core.telegram_engine import send_webhook_alert
-from core.memory_engine import load_sara_memories, save_sara_memories, save_sara_history
+from core.memory_engine import save_sara_history
 
 def render(app_config):
     st.markdown("### ROOT COMMAND CENTER")
-    adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics", "Sara's Core Memories", "CMS & Identity", "Vector Brain Injection"])
+    adm_tab1, adm_tab2, adm_tab3, adm_tab4, adm_tab5 = st.tabs(["Telemetry & Wiretap", "Telegram Diagnostics", "Agentic Training Simulator", "CMS & Identity", "Vector Brain Injection"])
     
     with adm_tab1:
         analytics_data = load_analytics()
@@ -83,39 +86,55 @@ def render(app_config):
                 else: st.error("Missing TELEGRAM_TOKEN secret.")
 
     with adm_tab3:
-        st.markdown("### Sara's Learned Memories & Character Profile")
-        current_sara_memories = load_sara_memories()
+        st.markdown("### Agentic Training Simulator")
+        st.write("Run a simulated interview loop. An AI Recruiter will interrogate the Kitsune Agent, and a Master Evaluator will score the response and suggest prompt adjustments.")
         
-        if current_sara_memories:
-            st.markdown("#### Current Memory Database:")
-            for i, mem in enumerate(current_sara_memories):
-                col_m1, col_m2 = st.columns([11, 1])
-                col_m1.markdown(f"- `{mem}`")
-                if col_m2.button("❌", key=f"del_mem_{i}", help="Delete this memory permanently"):
-                    current_sara_memories.pop(i)
-                    save_sara_memories(current_sara_memories)
-                    st.rerun()
-        else:
-            st.info("No memories logged for Sara yet.")
-            
-        st.divider()
-        st.markdown("#### Inject Manual Memory:")
-        with st.form("add_sara_mem_form", clear_on_submit=True):
-            new_mem_input = st.text_input("New Memory / Fact about Sara", placeholder="e.g. Sara loves peonies...")
-            if st.form_submit_button("Inject to Sara's Memory") and new_mem_input.strip():
-                current_sara_memories.append(f"[{datetime.datetime.now().strftime('%Y-%m-%d')}] (Manual) {new_mem_input.strip()}")
-                save_sara_memories(current_sara_memories)
-                st.success("Memory injected!")
-                time.sleep(1)
-                st.rerun()
+        target_role = st.text_input("Target Company & Role", value="Senior AI Engineer at Datadog")
+        
+        if st.button("Start Simulation Sequence", type="primary"):
+            with st.spinner("AI Recruiter generating question..."):
+                try:
+                    llm_fast = ChatMistralAI(model="mistral-small-latest", temperature=0.7, mistral_api_key=get_secret_val("MISTRAL_API_KEY"))
+                    q_prompt = f"You are a strict technical recruiter hiring a {target_role}. Ask one highly challenging, specific technical interview question to test the candidate's system design and practical AI experience. Ask the question directly."
+                    question = llm_fast.invoke([HumanMessage(content=q_prompt)]).content.strip()
                     
-        col_sm1, col_sm2 = st.columns(2)
-        if col_sm1.button("Purge ALL Sara's Memories", use_container_width=True):
-            save_sara_memories([])
-            st.success("Cleared!"); st.rerun()
-        if col_sm2.button("Wipe Sara's Chat Logs", use_container_width=True):
-            save_sara_history([])
-            st.success("Wiped!"); st.rerun()
+                    st.markdown("#### AI Recruiter")
+                    st.info(question)
+                    
+                    rag_chain = initialize_rag_system()
+                    resume_raw = get_resume_text()
+                    persona = app_config.get("persona_prompt", DEFAULT_CONFIG["persona_prompt"])
+                    full_context = f"Company/Role: {target_role}\n{persona}\n\n--- ADEM'S FULL CV ---\n{resume_raw}"
+                    
+                    response = rag_chain.invoke({"input": question, "company_context": full_context})
+                    answer = response["answer"]
+                    
+                    st.markdown("#### Kitsune Agent (Candidate)")
+                    st.success(answer)
+                    
+                    llm_heavy = ChatMistralAI(model="mistral-medium-latest", temperature=0.2, mistral_api_key=get_heavy_model_key())
+                    eval_prompt = f"""
+                    You are a Master AI Evaluator. Review this interview exchange for the role of {target_role}:
+                    
+                    QUESTION: {question}
+                    KITSUNE'S ANSWER: {answer}
+                    
+                    CURRENT MASTER PROMPT:
+                    {persona}
+                    
+                    Evaluate Kitsune's answer based on technical accuracy, confidence, and adherence to the persona.
+                    Provide exactly:
+                    1. SCORE: (Out of 100)
+                    2. CRITIQUE: (What was missing, weak, or overly robotic)
+                    3. SUGGESTED PROMPT ADJUSTMENT: (Provide a slightly modified version of the Master Prompt to fix these flaws)
+                    """
+                    evaluation = llm_heavy.invoke([HumanMessage(content=eval_prompt)]).content
+                    
+                    st.markdown("#### Master Evaluator")
+                    st.warning(evaluation)
+                    
+                except Exception as e:
+                    st.error(f"Simulation Error: {e}")
 
     with adm_tab4:
         st.info("Security Enforcement Active: API keys locked to Secrets.")
@@ -165,7 +184,15 @@ def render(app_config):
                 time.sleep(1.5)
                 st.rerun()
 
-        if st.button("Force Clear Neural Cache"): st.cache_data.clear(); st.success("Cache cleared.")
+        col_wipe1, col_wipe2 = st.columns(2)
+        with col_wipe1:
+            if st.button("Force Clear Neural Cache", use_container_width=True):
+                st.cache_data.clear()
+                st.success("Application memory cache cleared.")
+        with col_wipe2:
+            if st.button("Wipe Sara's Chat Logs", use_container_width=True):
+                save_sara_history([])
+                st.success("Sara's chat history wiped!")
 
     with adm_tab5:
         st.markdown("### Bulk Vector Upload")

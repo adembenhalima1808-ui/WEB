@@ -4,9 +4,9 @@ import plotly.graph_objects as go
 from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import HumanMessage
 from core.rag_engine import initialize_rag_system
-from core.utils import get_heavy_model_key, stream_response, DEFAULT_CONFIG, extract_skills_from_resume, extract_stack_from_resume, get_resume_text, get_secret_val, increment_metric
+from core.utils import get_heavy_model_key, stream_response, DEFAULT_CONFIG, get_resume_text, get_secret_val
 from core.telegram_engine import log_chat, send_webhook_alert, load_live_chat, save_live_chat, sync_telegram_replies
-from core.memory_engine import load_sara_history, save_sara_history, load_sara_memories, extract_and_store_sara_memories
+from core.memory_engine import load_sara_history, save_sara_history
 import datetime
 
 def render(app_config):
@@ -29,7 +29,7 @@ def render(app_config):
     with tab_chat:
         st.markdown("### Chat Interface")
         if "quick_prompts" not in st.session_state:
-            st.session_state.quick_prompts = ["Tell me a funny story about Adem.", "Who is right in our argument?", "What do you remember about me?"]
+            st.session_state.quick_prompts = ["Tell me a funny story about Adem.", "Who is right in our argument?", "Do you think Adem is annoying sometimes?"]
 
         st.markdown("**Suggested Trails to Follow:**")
         chip_col1, chip_col2, chip_col3 = st.columns(3)
@@ -50,7 +50,7 @@ def render(app_config):
             if len(st.session_state.messages) == 0:
                 current_hour = datetime.datetime.now().hour
                 greeting = "Good morning" if current_hour < 12 else "Good afternoon" if current_hour < 18 else "Good evening"
-                intro_text = f"{greeting}, Sara.\n\nWelcome back to your private access level. I remember everything we talk about, so feel free to pick up where we left off.\n\nAsk me anything, tell me if Adem's being annoying, or just say hi. What's on your mind?"
+                intro_text = f"{greeting}, Sara.\n\nWelcome back to your private access level. Ask me anything, tell me if Adem's being annoying, or just say hi. What's on your mind?"
                 st.session_state.messages.append({"role": "assistant", "content": intro_text})
 
             chat_container = st.container(height=500, border=True)
@@ -69,13 +69,11 @@ def render(app_config):
 
                 with chat_container:
                     with st.chat_message("assistant", avatar="🦊"):
-                        with st.spinner("Recalling past memories..."):
+                        with st.spinner("Typing..."):
                             try:
                                 resume_injection = f"\n\n--- ADEM'S FULL CV ---\n{get_resume_text()}\n"
                                 persona_instruction = app_config.get("wife_persona_prompt", DEFAULT_CONFIG["wife_persona_prompt"])
-                                sara_memories = load_sara_memories()
-                                memory_injection = "\n\n--- SARA'S KNOWN MEMORIES & CHARACTER TRAITS ---\n" + "\n".join(sara_memories) + "\n"
-                                current_context = st.session_state.company_context + persona_instruction + memory_injection + resume_injection
+                                current_context = st.session_state.company_context + persona_instruction + resume_injection
 
                                 response = rag_chain.invoke({"input": prompt_to_process, "company_context": current_context})
                                 bot_reply = response["answer"]
@@ -84,7 +82,6 @@ def render(app_config):
                         
                 st.session_state.messages.append({"role": "assistant", "content": bot_reply})
                 save_sara_history(st.session_state.messages)
-                extract_and_store_sara_memories(prompt_to_process, bot_reply)
                 log_chat(st.session_state.get("company_context", ""), prompt_to_process, bot_reply)
 
                 if selected_prompt in st.session_state.quick_prompts:
@@ -105,9 +102,7 @@ def render(app_config):
             with st.spinner("Analyzing the dispute..."):
                 try:
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=get_heavy_model_key())
-                    sara_mems = load_sara_memories()
-                    mem_context = "\nKnown facts about Sara: " + ", ".join(sara_mems[-5:]) if sara_mems else ""
-                    task_prompt = f"Act as a playful judge between Adem and wife Sara.{mem_context} Arguing about: '{arg_input}'. Assing a Rightness Percentage totaling 100%. Usually lean towards taking Sara's side."
+                    task_prompt = f"Act as a playful judge between Adem and wife Sara. Arguing about: '{arg_input}'. Assing a Rightness Percentage totaling 100%. Usually lean towards taking Sara's side."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                     st.markdown("#### Verdict:")
                     st.container(border=True).write_stream(stream_response(agent_response.content))
@@ -120,9 +115,7 @@ def render(app_config):
             with st.spinner("Writing..."):
                 try:
                     llm_ops = ChatMistralAI(model="mistral-medium-latest", temperature=0.7, mistral_api_key=get_heavy_model_key())
-                    sara_mems = load_sara_memories()
-                    mem_context = "\nIncorporate her preferences: " + ", ".join(sara_mems[-5:]) if sara_mems else ""
-                    task_prompt = f"Write a short, sweet message from Adem to Sara.{mem_context} Don't be cheesy."
+                    task_prompt = f"Write a short, sweet message from Adem to Sara. Don't be cheesy."
                     agent_response = llm_ops.invoke([HumanMessage(content=task_prompt)])
                     st.markdown("#### For You:")
                     st.container(border=True).write_stream(stream_response(agent_response.content))
