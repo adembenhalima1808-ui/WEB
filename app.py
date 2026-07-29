@@ -132,9 +132,9 @@ if is_maintenance_on and not st.session_state.is_admin:
             st.markdown("<h2 class='text-red-glow' style='text-align: center;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
             st.markdown(f"<div style='text-align: center; color: #A1A1AA; margin-bottom: 25px;'>{app_config.get('maintenance_reason', DEFAULT_CONFIG['maintenance_reason'])}</div>", unsafe_allow_html=True)
             
-            with st.expander("🔑 Admin Override Access"):
+            with st.expander("Admin Override Access"):
                 with st.form("maint_admin_form", clear_on_submit=True):
-                    admin_pass = st.text_input("Admin Override Command", type="password", placeholder="Enter 'sudo override'")
+                    admin_pass = st.text_input("Admin Override Command", type="password", placeholder="For admin access only.")
                     if st.form_submit_button("Request 2FA OTP", use_container_width=True):
                         if admin_pass.strip() == "sudo override":
                             auth_code = str(random.randint(100000, 999999))
