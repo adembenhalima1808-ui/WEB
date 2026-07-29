@@ -62,32 +62,6 @@ st.markdown(f"""
     .social-link {{ display: flex; justify-content: center; align-items: center; flex: 1; color: #A1A1AA; text-decoration: none; padding: 12px; background-color: #050403; border: 1px solid rgba(255, 122, 0, 0.15); border-radius: 6px; transition: all 0.3s ease; }}
     .social-link svg {{ width: 24px; height: 24px; fill: currentColor; }}
     .social-link:hover {{ color: #FF7A00; border-color: #FF7A00; box-shadow: 0 0 10px rgba(255, 122, 0, 0.15); transform: translateY(-2px); }}
-    
-    /* SECRET ADMIN BUTTON STYLING (DISGUISED AS SLEEPING FOX) */
-    button[data-testid="baseButton-secondary"].st-key-secret_admin_btn {{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 0 auto !important;
-        height: auto !important;
-        padding: 0 !important;
-    }}
-    button[data-testid="baseButton-secondary"].st-key-secret_admin_btn p {{
-        font-size: 7rem !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1));
-        animation: reactorBreathe 3s infinite ease-in-out;
-    }}
-    button[data-testid="baseButton-secondary"].st-key-secret_admin_btn:hover p {{
-        filter: grayscale(50%) drop-shadow(0 0 15px rgba(255, 122, 0, 0.3));
-        transform: scale(1.05);
-        transition: all 0.3s ease;
-    }}
-
     .reactor-icon {{ font-size: 7rem; text-align: center; display: block; margin-bottom: 10px; }}
     .reactor-sleeping {{ filter: grayscale(80%) drop-shadow(0 0 5px rgba(255, 122, 0, 0.1)); animation: reactorBreathe 3s infinite ease-in-out; }}
     @keyframes reactorBreathe {{ 0%, 100% {{ transform: scale(1); filter: grayscale(80%) drop-shadow(0 0 5px rgba(255,122,0,0.1)); }} 50% {{ transform: scale(1.03); filter: grayscale(50%) drop-shadow(0 0 15px rgba(255,122,0,0.3)); }} }}
@@ -116,7 +90,6 @@ if "admin_2fa_pending" not in st.session_state: st.session_state.admin_2fa_pendi
 if "admin_2fa_code" not in st.session_state: st.session_state.admin_2fa_code = ""
 if "wife_auth_pending" not in st.session_state: st.session_state.wife_auth_pending = False
 if "egi_auth_pending" not in st.session_state: st.session_state.egi_auth_pending = False
-if "show_secret_login" not in st.session_state: st.session_state.show_secret_login = False
 
 if st.query_params.get("initialized") == "true":
     st.session_state.app_initialized = True
@@ -124,8 +97,8 @@ if st.query_params.get("initialized") == "true":
     if "company_context" not in st.session_state:
         saved_company = st.query_params.get("company", "")
         if st.session_state.is_admin: st.session_state.company_context = "SYSTEM ROOT: ADMIN OVERRIDE PROTOCOL ENABLED."
-        elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife."
-        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Adem's sister-in-law and Sara's sister."
+        elif st.session_state.is_wife_mode: st.session_state.company_context = "Company Name: Sara (Wife)\nBackground: Adem's beloved wife. Treat her with utmost love and affection."
+        elif st.session_state.is_egi_mode: st.session_state.company_context = "Company Name: Egi (Sara's sister / Adem's Sister-in-law)\nBackground: Adem's sister-in-law and Sara's sister. Time to relentlessly roast her and remind her Adem is the favorite."
         elif saved_company: st.session_state.company_context = f"Company Name: {saved_company}\nBackground: Restored from neural memory link."
         else: st.session_state.company_context = "General public evaluation."
             
@@ -155,27 +128,20 @@ if is_maintenance_on and not st.session_state.is_admin:
                     st.session_state.admin_2fa_pending = False
                     st.rerun()
         else:
-            # Secret Admin Button (Disguised as the sleeping fox emoji)
-            if st.button("🦊💤", key="secret_admin_btn"):
-                st.session_state.show_secret_login = not st.session_state.show_secret_login
-                st.rerun()
-
-            st.markdown("<h2 class='text-red-glow' style='text-align: center; margin-top: -15px;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
+            st.markdown("<span class='reactor-icon reactor-sleeping'>🦊</span>", unsafe_allow_html=True)
+            st.markdown("<h2 class='text-red-glow' style='text-align: center;'>SYSTEM OFFLINE</h2>", unsafe_allow_html=True)
             st.markdown(f"<div style='text-align: center; color: #A1A1AA; margin-bottom: 25px;'>{app_config.get('maintenance_reason', DEFAULT_CONFIG['maintenance_reason'])}</div>", unsafe_allow_html=True)
             
-            # Hidden terminal that only appears when fox is clicked
-            if st.session_state.show_secret_login:
+            with st.expander("🔑 Admin Override Access"):
                 with st.form("maint_admin_form", clear_on_submit=True):
-                    admin_pass = st.text_input("Terminal", type="password", placeholder="", label_visibility="collapsed")
-                    col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
-                    if col_b2.form_submit_button("Execute", use_container_width=True):
+                    admin_pass = st.text_input("Admin Override Command", type="password", placeholder="Enter 'sudo override'")
+                    if st.form_submit_button("Request 2FA OTP", use_container_width=True):
                         if admin_pass.strip() == "sudo override":
                             auth_code = str(random.randint(100000, 999999))
-                            st.session_state.update(admin_2fa_code=auth_code, admin_2fa_pending=True, show_secret_login=False)
+                            st.session_state.update(admin_2fa_code=auth_code, admin_2fa_pending=True)
                             send_webhook_alert(f"⚠️ ROOT ACCESS ATTEMPT (Maintenance Mode)\n\n2FA Code: {auth_code}")
                             st.rerun()
-                        else: 
-                            st.error("Access Denied.")
+                        else: st.error("Invalid command.")
     st.stop()
 
 # --- LOCK SCREEN / GATEKEEPER ROUTING ---
