@@ -23,7 +23,7 @@ Evaluation of the original version on a set of test questions: 92% correct answe
 Memory Engine (original version): stored conversation history locally to keep multi-turn context without exceeding the token limit.
 Role-based access control (RBAC) with 4 interactive views, and remote control through the Telegram API.
 Current rebuild: Starlette backend with a plain HTML/CSS/JS frontend, Mistral models for chat and embeddings, cosine-similarity retrieval, server-side sessions, and two-step admin login (password plus Telegram code).
-Evaluation of the current version (October 2026): 50 test questions graded by a second model (Mistral Medium) as judge: 98% answer quality, the right passage in the top 3 for 34 of 35 questions, and 40 of 40 security checks passed. Full report at /report.
+Evaluation of the current version (October 2026): 50 test questions (30 factual questions, plus hallucination traps, reasoning, multilingual, security, honesty, off-topic, company-tailoring and multi-turn questions), graded twice: a keyword check for required facts, then a second model (Mistral Medium) as judge. Results: 98% answer quality, the right passage in the top 3 for 34 of 35 questions. Separately, 40 of 40 website security checks passed (access control, file access, HTTP headers, input handling, cookies, authentication, rate limits, CSRF, data exposure). Those 40 checks are website security tests, not 40 prompt-injection attempts. No other metrics were used. Full report at /report.
 Impact: automates how Adem's profile is presented to recruiters using generative AI.
 
 === PROJECT 2: AUTONOMOUS AGENT TRAFFIC SIMULATOR (team project at CY Tech, 2025) ===
