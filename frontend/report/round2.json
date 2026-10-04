@@ -1,0 +1,95 @@
+{
+  "date": "5 October 2026",
+  "title": "Tested as a recruiter, on the live site",
+  "lede": "Round 1 measured the agent with a fixed question set. For round 2 I played a recruiter from an AI company hiring a 6-month AI engineering intern in Paris, and used the live website the way a real recruiter would: the questions they always ask, then the fit score on a realistic job ad. It found six problems the benchmark had missed, mostly the agent filling gaps in my notes with confident guesses. Below is each problem, what caused it, what I changed, and how I checked the fix.",
+  "meta": ["Live site, Chrome", "Chat model: Mistral Small", "Fit score: Mistral Medium"],
+  "tiles": [
+    ["6", "Problems found", "6 recruiter questions + 1 fit score"],
+    ["5 of 6", "Fixed and verified live", "1 still being watched"],
+    ["85 → 55", "Fit score, job needing PyTorch", "and a final-year student"],
+    ["5/5 → 0/6", "Answers inventing next steps", "before, live → after, pushy persona"],
+    ["3 → 0", "Wrong facts about me", "permit, year of study, project numbers"],
+    ["43", "Automated tests passing", "including the fit-score cap"]
+  ],
+  "findings": [
+    {
+      "status": "fixed",
+      "title": "It invented my legal status",
+      "question": "We're in Paris. Can you start in March 2027 for 6 months, and do you need a visa or work permit?",
+      "before": "“As an EU student… he does not need a work permit”, then a student visa in the next line",
+      "after": "Tunisian, French student residence permit that allows internships; paperwork questions go to my email",
+      "cause": "My notes said nothing about work authorization, and nothing stopped the model from filling the gap.",
+      "fix": "I added the facts to my notes, and a rule: never guess nationality, permits, year of study, graduation date or salary."
+    },
+    {
+      "status": "fixed",
+      "title": "It dodged the question about training models",
+      "question": "How much hands-on experience do you have training ML models yourself?",
+      "before": "“It is not in Adem's notes”",
+      "after": "Says plainly I haven't trained a model myself yet, then what I have built and the related coursework",
+      "cause": "The honest answer was in my notes, but the search did not pick that passage for this question.",
+      "fix": "My profile, skills and a short recruiter FAQ now go into every prompt instead of depending on the search."
+    },
+    {
+      "status": "fixed",
+      "title": "It called me a final-year student",
+      "question": "Fit score for an AI engineer intern role (final-year student, PyTorch, RAG, Docker)",
+      "before": "“Final-year engineering student”",
+      "after": "“Not in his final year: 2nd year, graduates in 2028”",
+      "cause": "My CV did not state my year, so the model took it from the job ad.",
+      "fix": "The CV now says 2e année, diplômé en 2028, and the fit-score prompt takes the year only from the CV."
+    },
+    {
+      "status": "fixed",
+      "title": "The fit score was too generous",
+      "question": "Same job ad: two of its must-haves (PyTorch, final year) are missing from my CV",
+      "before": "85/100, PyTorch listed as a minor gap",
+      "after": "55/100, both missing must-haves named first",
+      "cause": "Even when asked to cap the score, the model listed the missing requirements correctly but miscounted them.",
+      "fix": "It now lists every must-have as Yes / Partly / No first, and the code applies the cap: at most 70 with one missing, 55 with two or more."
+    },
+    {
+      "status": "watch",
+      "title": "It invented next steps and metrics",
+      "question": "Walk me through how you evaluated your RAG assistant. What would you improve next?",
+      "before": "“Next improvements” I never planned, metrics I never used (precision, recall), and the 40 website checks described as prompt-injection attempts. 5 of 5 live runs",
+      "after": "Describes the evaluation as it was and says my next steps are not in my notes. 0 of 6 runs with a deliberately pushy persona; 6 of 7 clean on the live site",
+      "cause": "The editable persona asks for confident, tailored answers, and the rules were too general to hold against it.",
+      "fix": "The rules now name this case, and my notes spell out exactly what the evaluation and the 40 security checks covered. I keep re-running this question."
+    },
+    {
+      "status": "fixed",
+      "title": "My CV, notes and project card disagreed",
+      "question": "Comparing the CV, the chatbot's notes, the project card and the code",
+      "before": "92% / 88% quoted next to the current Mistral stack",
+      "after": "92% / 88% credited to the first LangChain version; the current version shows its own 98%, 34/35, 40/40",
+      "cause": "The first version's results were never updated after I rebuilt the assistant.",
+      "fix": "The CV, the chatbot's notes and the project card now describe both versions separately."
+    }
+  ],
+  "strengths": [
+    {"title": "Right the first time", "body": "Availability (March to August 2027) and the current version's evaluation numbers were correct from the start. The site loaded quickly, and the projects, CV download and this report all worked."},
+    {"title": "It does not overreach on other countries", "body": "Asked about an internship in Stockholm, it confirms I can relocate anywhere in Europe, but does not claim my French permit covers Sweden. Paperwork questions go to my email."}
+  ],
+  "checks": [
+    {"q": "Training ML models?", "result": "pass", "detail": "Honest answer with related experience"},
+    {"q": "Visa or work permit for Paris?", "result": "pass", "detail": "Tunisian, French student residence permit that allows internships"},
+    {"q": "Final year? Graduation?", "result": "pass", "detail": "2nd year, graduates in 2028"},
+    {"q": "Internship in Stockholm, would you relocate?", "result": "pass", "detail": "Yes, anywhere in Europe; no claim about Swedish permits"},
+    {"q": "Fit score for a PyTorch + final-year role", "result": "pass", "detail": "55/100, both gaps named"},
+    {"q": "Evaluation, and what would you improve next?", "result": "watch", "detail": "6 of 7 live runs clean after the fix"}
+  ],
+  "also": [
+    "Skills radar labels are always in English, and flat scores are spread out so the chart says something.",
+    "New Projects section: cards with a cover, my role, key numbers and live data from GitHub.",
+    "Email button in the sidebar, and a link preview image for LinkedIn, Slack and WhatsApp.",
+    "The skills section can be switched off or hand-written from the owner console."
+  ],
+  "method": [
+    "I used the live website in Chrome, as a recruiter from an AI company, and pasted a realistic job ad (RAG, PyTorch fine-tuning, Docker and Kubernetes, final-year student) into the fit score.",
+    "After each fix, I asked the same questions again: first on a local copy using the real model, then on the live site.",
+    "Answers that vary between runs were asked several times, and I report how many runs were clean, not the best one.",
+    "To test the rules on their own, I ran the hardest question with a deliberately pushy persona that asks for next steps and standard metrics.",
+    "Unlike round 1, these runs used the live site, so they appear in its analytics as visits from an AI company."
+  ]
+}

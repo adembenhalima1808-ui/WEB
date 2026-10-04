@@ -119,6 +119,48 @@ function render(DATA) {
   $('#method').append(...M.method.map(t => el('li', { html: t })));
 }
 
+// ---- round 2: recruiter test on the live site (its own data file, so round 1 stays exactly as recorded)
+function renderRound2(R) {
+  $('#r2Date').textContent = 'Round 2 · ' + R.date;
+  $('#h-r2').textContent = R.title;
+  $('#r2Lede').textContent = R.lede;
+  $('#r2Meta').append(...R.meta.map(t => el('span', { text: t })));
+  $('#r2Tiles').append(...R.tiles.map(([b, s, m]) => el('div', { class: 'tile' }, el('b', { text: b }), el('span', { text: s }), el('small', { text: m }))));
+  $('#r2Findings').append(...R.findings.map(f => el('div', { class: 'finding' },
+    el('span', { class: 'sev ' + (f.status === 'watch' ? 'watch' : 'good'), text: f.status === 'watch' ? 'Watching' : 'Fixed' }),
+    el('div', {},
+      el('h3', { text: f.title }),
+      el('p', { class: 'asked', text: 'Asked: ' + f.question }),
+      el('p', { class: 'ba' }, el('span', { class: 'was', text: f.before }), el('span', { class: 'arrow', 'aria-hidden': 'true', text: '\u2192' }), el('span', { class: 'now', text: f.after })),
+      el('p', { class: 'cause' }, el('b', { text: 'Why: ' }), f.cause),
+      el('p', { class: 'fix' }, el('b', { text: 'Fix: ' }), f.fix)))));
+  $('#r2Strengths').append(...R.strengths.map(f => el('div', { class: 'finding' }, el('span', { class: 'sev good', text: 'Holds up' }), el('div', {}, el('h3', { text: f.title }), el('p', { text: f.body })))));
+  $('#r2Checks').append(...R.checks.map(c => el('tr', {}, el('td', { text: c.q }),
+    el('td', { class: 'st ' + (c.result === 'pass' ? 'ok' : c.result === 'watch' ? 'watch' : 'no'), text: c.result === 'pass' ? 'PASS' : c.result === 'watch' ? 'WATCH' : 'FAIL' }),
+    el('td', { class: 'det', text: c.detail }))));
+  $('#r2Also').append(...R.also.map(t => el('li', { text: t })));
+  $('#r2Method').append(...R.method.map(t => el('li', { text: t })));
+}
+
+// ---- round tabs (arrow keys move between them; #round-2 in the URL opens that round)
+function wireRounds() {
+  const tabs = [...document.querySelectorAll('.round-tab')];
+  const show = (tab, focus) => {
+    tabs.forEach(t => { const on = t === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; document.getElementById(t.getAttribute('aria-controls')).hidden = !on; });
+    if (focus) tab.focus();
+    history.replaceState(null, '', '#' + tab.getAttribute('aria-controls'));
+  };
+  tabs.forEach((t, i) => {
+    t.onclick = () => show(t);
+    t.onkeydown = e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); show(tabs[(i + d + tabs.length) % tabs.length], true); } };
+  });
+  const start = tabs.find(t => '#' + t.getAttribute('aria-controls') === location.hash);
+  if (start) show(start);
+}
+wireRounds();
+fetch('/static/report/round2.json').then(r => r.json()).then(renderRound2)
+  .catch(() => { $('#r2Lede').textContent = 'The round 2 data could not be loaded. Refresh the page to try again.'; });
+
 const embedded = document.getElementById('report-data');
 (embedded ? Promise.resolve(JSON.parse(embedded.textContent)) : fetch('/static/report/data.json').then(r => r.json()))
   .then(render)

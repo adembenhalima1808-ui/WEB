@@ -17,9 +17,19 @@
     <a class="back" href="/">&larr; Back to the agent</a>
     <span class="eyebrow">Test report · Kitsune agent</span>
     <h1>How well does my AI twin answer recruiters?</h1>
+    <p class="muted">I test the agent in rounds and keep every round on this page, including what went wrong.</p>
+    <div class="rounds" role="tablist" aria-label="Test rounds">
+      <button class="round-tab" role="tab" id="tab-1" aria-controls="round-1" aria-selected="true" type="button"><b>Round 1</b><span>Automated benchmark · 4 Oct 2026</span></button>
+      <button class="round-tab" role="tab" id="tab-2" aria-controls="round-2" aria-selected="false" tabindex="-1" type="button"><b>Round 2</b><span>Recruiter test, live site · 5 Oct 2026</span></button>
+    </div>
+  </header>
+
+  <div class="panel" role="tabpanel" id="round-1" aria-labelledby="tab-1">
+  <section aria-labelledby="h-round1">
+    <h2 id="h-round1" class="sr-only">Round 1: automated benchmark</h2>
     <p class="muted" id="lede"></p>
     <div class="meta-row" id="metaRow"></div>
-  </header>
+  </section>
 
   <section aria-labelledby="h-verdict">
     <h2 id="h-verdict" class="eyebrow small">Overall score</h2>
@@ -70,6 +80,39 @@
     <h2 id="h-method">How I tested it</h2>
     <div class="card"><ul class="plain" id="method"></ul></div>
   </section>
+  </div>
+
+  <div class="panel" role="tabpanel" id="round-2" aria-labelledby="tab-2" hidden>
+  <section aria-labelledby="h-r2">
+    <span class="eyebrow" id="r2Date"></span>
+    <h2 id="h-r2"></h2>
+    <p class="muted" id="r2Lede"></p>
+    <div class="meta-row" id="r2Meta"></div>
+    <div class="tiles wide" id="r2Tiles"></div>
+  </section>
+
+  <section aria-labelledby="h-r2-found">
+    <h2 id="h-r2-found">What I found and fixed</h2>
+    <p class="muted">For each problem: the question I asked, the answer before and after, why it happened, and what I changed.</p>
+    <div class="findings" id="r2Findings"></div>
+    <h3 class="gap-top">What already worked</h3>
+    <div class="findings" id="r2Strengths"></div>
+  </section>
+
+  <section aria-labelledby="h-r2-check">
+    <h2 id="h-r2-check">Re-test on the live site</h2>
+    <p class="muted">The same recruiter questions, asked again on the live website after the fixes.</p>
+    <div class="tablewrap"><table><thead><tr><th>Question</th><th>Result</th><th>Answer now</th></tr></thead><tbody id="r2Checks"></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="h-r2-also">
+    <h2 id="h-r2-also">Also changed on the site</h2>
+    <div class="two">
+      <div class="card"><h3>Presentation</h3><ul class="plain" id="r2Also"></ul></div>
+      <div class="card"><h3>How I ran round 2</h3><ul class="plain" id="r2Method"></ul></div>
+    </div>
+  </section>
+  </div>
 </div>
 <script src="/static/report/report.js" defer></script>
 </body>

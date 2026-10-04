@@ -123,3 +123,21 @@ ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14
 .ba .now { color: var(--good); font-weight: 600 }
 .ba .arrow { color: var(--muted) }
 #strengths .finding, #changes .finding { align-items: start }
+
+/* test rounds */
+.panel { display: grid; gap: 56px; min-width: 0 }
+.panel[hidden] { display: none }
+.rounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin-top: 6px }
+.round-tab { display: grid; gap: 2px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; cursor: pointer }
+.round-tab b { font: 700 17px var(--f-display) }
+.round-tab span { font: 12px var(--f-mono); color: var(--muted) }
+.round-tab:hover { border-color: var(--accent) }
+.round-tab[aria-selected="true"] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); background: var(--accent-soft) }
+.tiles.wide { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+@media (max-width: 760px) { .tiles.wide { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.finding .asked { font: 12.5px var(--f-mono); color: var(--muted); margin-top: 2px }
+.finding .cause { font-size: 13.5px; margin-top: 6px }
+.finding .cause b, .finding .fix b { color: var(--ink) }
+.sev.watch { background: var(--warn-soft); color: var(--warn) }
+td.st.watch { color: var(--warn) }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
