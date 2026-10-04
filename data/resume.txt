@@ -1,6 +1,6 @@
 Adem Ben Halima
-Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027
-Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027.
+Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027 · Mobile partout en Europe
+Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027, partout en Europe.
 Email: adem@ben-halima.com | LinkedIn: https://www.linkedin.com/in/adembenhalima | GitHub: https://github.com/adembenhalima1808-ui | Cergy, France · Échange en Chine
 
 COMPETENCES
@@ -37,7 +37,7 @@ Simulateur de Trafic d’Agents Autonomes (Projet Équipe - CY Tech, 2025): Simu
 Impact: Résolution des goulots d’étranglement du trafic par l’optimisation algorithmique.
 
 FORMATION
-Diplôme d’Ingénieur en Informatique (2e année) - CY Tech (Cergy, France, 09/2025 - Présent). Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.
+Diplôme d’Ingénieur en Informatique (2e année, diplômé en 2028) - CY Tech (Cergy, France, 09/2025 - Présent). Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.
 Semestre international - Xi’an Jiaotong-Liverpool University (Chine, 09/2026 - 02/2027)
 Classe Prépa (Top 5, L’Étudiant 2025) - IPEST (La Marsa, Tunisie, 09/2023 - 08/2025)
 Bac Maths - Mention TB (18,5/20) - Lycée Pilote Sousse (Tunisie, 09/2022 - 06/2023)

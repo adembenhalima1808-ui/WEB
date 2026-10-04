@@ -1,7 +1,7 @@
 resume:
   name: 'Adem Ben Halima'
-  title: 'Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027'
-  summary: 'Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027.'
+  title: 'Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027 · Mobile partout en Europe'
+  summary: 'Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027, partout en Europe.'
 
   contact:
     phone: '+33 7 66 80 79 67'
@@ -91,7 +91,7 @@ resume:
 
   education:
     - institution: 'CY Tech'
-      program: 'Diplôme d’Ingénieur en Informatique (2e année)'
+      program: 'Diplôme d’Ingénieur en Informatique (2e année, diplômé en 2028)'
       location: 'Cergy, France'
       duration: '09/2025 - Présent'
       details: 'Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.'
