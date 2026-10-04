@@ -35,9 +35,9 @@ DEFAULT_CONFIG = {
          "tagline": ("The site you are on. A RAG assistant that answers recruiters from my CV, scores job fit, "
                      "drafts cover letters and forwards messages to my phone through Telegram."),
          "role": "Solo project · 2025 to present",
-         "highlights": [{"value": "92%", "label": "correct answers on the test set"},
-                        {"value": "88%", "label": "relevant passages retrieved"},
-                        {"value": "4", "label": "access-controlled views"}],
+         "highlights": [{"value": "98%", "label": "answer quality on 50 test questions"},
+                        {"value": "34/35", "label": "right passage in the top 3"},
+                        {"value": "40/40", "label": "security checks passed"}],
          "tech": ["Python", "Starlette", "Mistral AI", "RAG", "Telegram API", "Docker"],
          "image": "/static/projects/kitsune.jpg", "link": "/report", "link_label": "How it was tested"},
     ],

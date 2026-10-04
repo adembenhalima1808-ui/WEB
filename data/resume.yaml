@@ -73,10 +73,10 @@ resume:
       duration: '2025 - Présent'
       description: 'Application web Python : assistant IA répondant aux recruteurs sur mon profil.'
       achievements:
-        - 'Assistant RAG en Python : pipeline LangChain, OpenAI embeddings, ChromaDB et GPT-4o-mini.'
-        - 'Évalué sur un jeu de questions de test : 92 % de réponses correctes et 88 % de passages pertinents récupérés.'
-        - 'Memory Engine : stocke l’historique conversationnel localement pour maintenir le contexte multi-tours sans saturer la limite de tokens.'
-        - 'Contrôle d’accès RBAC avec 4 vues interactives et pilotage à distance via l’API Telegram.'
+        - 'Assistant RAG en Python (Starlette) : embeddings Mistral, recherche par similarité cosinus, réponses ancrées dans le CV et protégées contre l’injection de prompt.'
+        - 'Évalué sur 50 questions de test avec un second modèle comme juge : 98 % de qualité de réponse, bon passage dans le top 3 pour 34 questions sur 35, 40/40 contrôles de sécurité.'
+        - 'Première version avec LangChain, OpenAI embeddings, ChromaDB et GPT-4o-mini (92 % de réponses correctes), puis réécriture complète plus légère.'
+        - 'Contrôle d’accès RBAC avec 4 vues, connexion admin en deux étapes et pilotage à distance via l’API Telegram.'
       impact: 'Automatisation de la présentation du profil aux recruteurs grâce à l’IA générative.'
 
     - name: 'Simulateur de Trafic d’Agents Autonomes'

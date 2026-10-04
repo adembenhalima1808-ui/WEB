@@ -18,10 +18,11 @@ Honest gaps: no professional developer experience in a company yet; limited clas
 === PROJECT 1: INTERACTIVE PORTFOLIO AND RAG AI ASSISTANT (solo, 2025 to present) ===
 A Python web application where an AI assistant answers recruiters' questions about Adem's profile (this website).
 Original version: RAG pipeline in Python with LangChain, OpenAI embeddings, ChromaDB and GPT-4o-mini.
-Evaluation on a set of test questions: 92% correct answers and 88% relevant passages retrieved.
-Memory Engine: stores conversation history locally to keep multi-turn context without exceeding the token limit.
+Evaluation of the original version on a set of test questions: 92% correct answers and 88% relevant passages retrieved.
+Memory Engine (original version): stored conversation history locally to keep multi-turn context without exceeding the token limit.
 Role-based access control (RBAC) with 4 interactive views, and remote control through the Telegram API.
 Current rebuild: Starlette backend with a plain HTML/CSS/JS frontend, Mistral models for chat and embeddings, cosine-similarity retrieval, server-side sessions, and two-step admin login (password plus Telegram code).
+Evaluation of the current version (October 2026): 50 test questions graded by a second model (Mistral Medium) as judge: 98% answer quality, the right passage in the top 3 for 34 of 35 questions, and 40 of 40 security checks passed. Full report at /report.
 Impact: automates how Adem's profile is presented to recruiters using generative AI.
 
 === PROJECT 2: AUTONOMOUS AGENT TRAFFIC SIMULATOR (team project at CY Tech, 2025) ===
