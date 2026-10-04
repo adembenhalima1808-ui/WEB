@@ -87,6 +87,8 @@ const FIELDS = [
   ['intro_text', 'Hero Introduction Text', 'area'], ['human_comm_enabled', 'Enable Human Comm-Link Tab', 'bool'],
   ['skills_enabled', 'Show skills (sidebar badges + competencies radar)', 'bool'],
   ['skills_manual', 'Use my skills below instead of the AI-generated ones', 'bool'],
+  ['projects_enabled', 'Show the Projects section (public repos from the GitHub URL above)', 'bool'],
+  ['projects_repos', 'Repos to show, comma-separated, in order (empty = the 6 most recently updated)', 'area'],
   ['skills_stack', 'Skill badges (comma-separated)', 'area'], ['skills_radar', 'Radar skills, one "Name: score 0-100" per line (3-10 lines)', 'area'],
   ['persona_prompt', 'Master Persona Prompt', 'area'], ['private1_persona_prompt', 'Private area 1 persona prompt', 'area'],
   ['private2_persona_prompt', 'Private area 2 persona prompt', 'area'], ['maintenance_mode', 'Enable Maintenance Mode (locks out everyone but you)', 'bool'],

@@ -23,7 +23,7 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-from . import mistral, profile, rag, resume, security, settings, telegram
+from . import github, mistral, profile, rag, resume, security, settings, telegram
 from .config_store import DEFAULT_CONFIG, EDITABLE, load_config, public_config, save_config
 from .security import clean_text, limiter
 from .storage import increment_metric, read_json, read_text, update_json, write_json, write_text
@@ -280,6 +280,14 @@ def h_skills(ctx, body):
     if cfg.get("skills_manual"):
         return {"enabled": True, **resume.manual_skills(cfg.get("skills_stack"), cfg.get("skills_radar"))}
     return {"enabled": True, **resume.skills_for(ctx.company)}
+
+
+@api(roles=None, limit=30, window=60, public_maintenance=True, methods=("GET",))
+def h_projects(ctx, body):
+    cfg = load_config()
+    if not cfg.get("projects_enabled", True):
+        return {"enabled": False, "projects": []}
+    return {"enabled": True, "projects": github.projects(cfg.get("github_url"), cfg.get("projects_repos"))}
 
 
 @api(limit=20, window=60, public_maintenance=True)
@@ -634,6 +642,7 @@ def h_admin_brain_append(ctx, body):
 def h_admin_clear_cache(ctx, body):
     rag.clear_cache()
     resume.clear_cache()
+    github.clear_cache()
     return {"ok": True}
 
 
@@ -786,6 +795,7 @@ routes = [
     Route("/api/config", h_config, methods=["GET"]),
     Route("/api/gate", h_gate, methods=["POST"]),
     Route("/api/skills", h_skills, methods=["GET"]),
+    Route("/api/projects", h_projects, methods=["GET"]),
     Route("/api/chat", h_chat, methods=["POST"]),
     Route("/api/suggest", h_suggest, methods=["POST"]),
     Route("/api/agent", h_agent, methods=["POST"]),

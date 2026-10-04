@@ -95,6 +95,16 @@ def clear_cache():
         _skills_cache.clear()
 
 
+def spread(scores):
+    """LLMs rate everything 85-95, which draws a featureless hexagon. Stretch a flat set to 50-95 keeping the order."""
+    lo, hi = min(scores), max(scores)
+    if hi - lo >= 25:
+        return scores
+    if hi == lo:
+        return [80] * len(scores)
+    return [round(50 + (s - lo) * 45 / (hi - lo)) for s in scores]
+
+
 def manual_skills(stack_text, radar_text):
     """Owner-written skills from the admin panel: 'A, B, C' badges and 'Category: score' radar lines."""
     stack = [t.strip()[:30] for t in str(stack_text or "").replace("\n", ",").split(",") if t.strip()][:12]
@@ -131,6 +141,9 @@ def skills_for(company):
             "Extract the 6 most prominent broad engineering competencies (each name at most 3 words / 26 characters) "
             "with a realistic proficiency score out of 100, "
             "adapted to the target company, plus exactly 5 specific technologies from the resume. "
+            "Write every name in English, even if the resume is in another language. "
+            "Be critical, as a senior engineer reviewing a student: scores must clearly differ, from about 45 for the "
+            "weakest to about 95 for the strongest, never all in the same range. "
             'Respond ONLY with JSON: {"categories": [6 strings], "scores": [6 ints], "stack": [5 strings]}')
         raw = mistral.chat([{"role": "user", "content": prompt}], model=mistral.MEDIUM, temperature=0.1, heavy=True)
         raw = raw.replace("```json", "").replace("```", "").strip()
@@ -139,7 +152,7 @@ def skills_for(company):
         scores = [max(0, min(100, int(s))) for s in data["scores"]][:6]
         stack = [str(s)[:30] for s in data["stack"]][:5]
         if len(cats) == 6 and len(scores) == 6 and stack:
-            result = {"categories": cats, "scores": scores, "stack": stack}
+            result = {"categories": cats, "scores": spread(scores), "stack": stack}
     except Exception:
         pass
     with _lock:

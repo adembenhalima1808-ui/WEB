@@ -56,6 +56,7 @@ if TELEGRAM_TOKEN.lower().startswith("bot"):
     TELEGRAM_TOKEN = TELEGRAM_TOKEN[3:]
 TELEGRAM_CHAT_ID = env("TELEGRAM_CHAT_ID")
 DISCORD_WEBHOOK = env("DISCORD_WEBHOOK")
+GITHUB_TOKEN = env("GITHUB_TOKEN")          # optional: only raises the GitHub API rate limit
 
 COOKIE_SECURE = env("COOKIE_SECURE", "1") not in ("0", "false", "False")
 TRUST_PROXY = env("TRUST_PROXY", "0") in ("1", "true", "True")

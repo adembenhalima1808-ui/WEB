@@ -117,6 +117,16 @@ hr { border: 0; border-top: 1px solid var(--line-soft); margin: 1.5rem 0; }
 .radar .spoke { stroke: rgba(255, 255, 255, .06); }
 .radar .shape { fill: rgba(var(--accent-rgb), .2); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
 .radar .dot { fill: var(--accent); }
+.projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin: .5rem 0 1rem; }
+.projects .loading { color: var(--muted); }
+.project { display: flex; flex-direction: column; gap: .6rem; padding: 1.1rem 1.2rem; background: var(--card); border: 1px solid var(--line-soft); border-radius: 8px; transition: border-color .3s, box-shadow .3s; }
+.project:hover { border-color: var(--line); box-shadow: 0 0 12px rgba(var(--accent-rgb), .08); }
+.project h4 { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.project h4 a { color: var(--strong); text-decoration: none; }
+.project h4 a:hover { color: var(--accent); }
+.project p { margin: 0; color: var(--text); font-size: .92rem; }
+.project-foot { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; font-size: .8rem; }
+.project-foot a { color: var(--accent); }
 .radar text { fill: var(--muted); font-size: 11px; font-family: var(--font); }
 
 /* tabs */

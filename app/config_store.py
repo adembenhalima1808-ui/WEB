@@ -18,6 +18,8 @@ DEFAULT_CONFIG = {
     "skills_stack": "Python, RAG / LLM APIs, Java, SQL, Git",
     "skills_radar": ("Machine Learning: 70\nPython & RAG: 90\nData Mining: 65\nDevOps: 70\nAlgorithms: 80\n"
                      "LLM Engineering: 85"),
+    "projects_enabled": True,
+    "projects_repos": "",
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "linkedin_url": "https://www.linkedin.com/in/adembenhalima",
@@ -50,14 +52,15 @@ DEFAULT_CONFIG = {
 
 # Fields the anonymous public may see.
 PUBLIC_FIELDS = ["title", "sidebar_subtitle", "role_title", "location", "intro_text", "status_text",
-                 "status_color", "maintenance_mode", "maintenance_reason", "human_comm_enabled", "skills_enabled", "refresh_rate",
+                 "status_color", "maintenance_mode", "maintenance_reason", "human_comm_enabled", "skills_enabled", "projects_enabled",
+                 "refresh_rate",
                  "linkedin_url", "github_url", "email"]
 
 # Fields the admin panel may change, with their expected types.
 EDITABLE = {"title": str, "sidebar_subtitle": str, "role_title": str, "location": str, "intro_text": str,
             "status_text": str, "status_color": str, "maintenance_mode": bool, "maintenance_reason": str,
             "human_comm_enabled": bool, "skills_enabled": bool, "skills_manual": bool, "skills_stack": str,
-            "skills_radar": str, "refresh_rate": int, "linkedin_url": str, "github_url": str, "email": str,
+            "skills_radar": str, "projects_enabled": bool, "projects_repos": str, "refresh_rate": int, "linkedin_url": str, "github_url": str, "email": str,
             "persona_prompt": str,
             "private1_persona_prompt": str, "private2_persona_prompt": str}
 

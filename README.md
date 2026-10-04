@@ -10,6 +10,7 @@ An AI "digital twin" portfolio site. Recruiters type their company name, and the
 
 - **Direct Interrogation:** a RAG chatbot that answers only from the CV and a curated knowledge file, with guardrails against prompt injection.
 - **Competencies radar:** skills re-weighted for the visitor's company by the LLM. You can also write them yourself or turn them off (see below).
+- **Projects:** cards for your public GitHub repos, fetched live and cached for an hour.
 - **Agentic Operations:** paste a job description and get a fit score, a cover letter or interview questions.
 - **Direct Comm-Link:** visitors message my phone through Telegram, and I reply from there.
 - **Owner command center:** analytics, chat logs, a CMS for all site text, CV upload with AI-drafted copy, an interview simulator, and a knowledge-base editor.
@@ -48,6 +49,7 @@ All secrets come from environment variables or `.env`, which is never committed.
 | `SARA_PASSPHRASE`, `EGI_PASSPHRASE` | Private areas (leave empty to disable) |
 | `ADMIN_TRIGGER` | Phrase that opens the owner login (default `sudo override`) |
 | `COOKIE_SECURE` | `1` in production (HTTPS), `0` for local http |
+| `GITHUB_TOKEN` | Optional. Only raises the GitHub API rate limit for the Projects section |
 | `TRUST_PROXY` | `1` behind Render, Fly or nginx so rate limits see real IPs |
 
 ## How the doors work
@@ -68,6 +70,15 @@ Log in with `sudo override`, open **CMS & Identity**, then press **Inject Overri
 | **Use my skills below** | On replaces the AI-generated skills with your own list |
 | **Skill badges** | Comma-separated, e.g. `Python, RAG, SQL` |
 | **Radar skills** | One `Name: score` per line (score 0 to 100), 3 to 10 lines |
+
+## Managing projects
+
+The Projects section lists the public, non-fork repos of the account in **GitHub URL (https)**. In **CMS & Identity**:
+
+- **Show the Projects section** turns it on or off.
+- **Repos to show** takes repo names, comma-separated, in the order you want them. Leave it empty to show the 6 most recently updated.
+
+Each card uses the repo's GitHub description, topics and website, so set those on GitHub (the gear icon next to "About" on the repo page).
 
 ## Editing content
 

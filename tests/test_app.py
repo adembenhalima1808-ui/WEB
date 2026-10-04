@@ -16,7 +16,7 @@ shutil.copy(os.path.join(os.path.dirname(__file__), "..", "data", "my_brain.txt"
 
 import requests
 import uvicorn
-from app import main, mistral, telegram, rag, security
+from app import github, main, mistral, resume, telegram, rag, security
 
 ALERTS = []
 
@@ -38,6 +38,16 @@ telegram.send_alert = fake_alert
 main.company_background = lambda name: "FAKE-BACKGROUND"
 mistral.chat = fake_chat
 mistral.embed = fake_embed
+GITHUB_CALLS = []
+
+
+def fake_repos(user):
+    GITHUB_CALLS.append(user)
+    return [{"name": n, "description": "d", "url": "https://github.com/x/" + n, "homepage": "", "language": "Python",
+             "stars": 0, "topics": [], "pushed": "2026-10-01"} for n in ("alpha", "beta", "gamma")]
+
+
+github.fetch_repos = fake_repos
 
 PORT = 8765
 BASE = f"http://127.0.0.1:{PORT}"
@@ -361,6 +371,33 @@ class PublicTests(unittest.TestCase):
             self.assertEqual(s.get(BASE + "/api/skills").json(), {"enabled": False, "categories": [], "scores": [], "stack": []})
         finally:
             post(adm, "/api/admin/config", {"skills_enabled": True, "skills_manual": False})
+
+    def test_projects_from_github(self):
+        adm = admin_session()
+        github.clear_cache()
+        try:
+            post(adm, "/api/admin/config", {"github_url": "https://github.com/someone", "projects_repos": "gamma, nope, Alpha"})
+            r = requests.get(BASE + "/api/projects").json()
+            self.assertEqual([p["name"] for p in r["projects"]], ["gamma", "alpha"])
+            requests.get(BASE + "/api/projects")
+            self.assertEqual(GITHUB_CALLS.count("someone"), 1)
+            post(adm, "/api/admin/config", {"projects_enabled": False})
+            self.assertEqual(requests.get(BASE + "/api/projects").json(), {"enabled": False, "projects": []})
+            self.assertFalse(requests.get(BASE + "/api/config").json()["projects_enabled"])
+        finally:
+            post(adm, "/api/admin/config", {"projects_enabled": True, "projects_repos": "",
+                                            "github_url": "https://github.com/adembenhalima1808-ui"})
+
+    def test_github_username_and_skill_spread(self):
+        self.assertEqual(github.username("https://github.com/adembenhalima1808-ui"), "adembenhalima1808-ui")
+        self.assertEqual(github.username("https://evil.com/x"), "")
+        self.assertEqual(resume.spread([90, 92, 88, 95, 91, 89]), [63, 76, 50, 95, 69, 56])
+        self.assertEqual(resume.spread([40, 95, 70]), [40, 95, 70])
+
+    def test_og_image_served(self):
+        r = requests.get(BASE + "/static/og.png")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "image/png")
 
     def test_brain_edit_and_append(self):
         adm = admin_session()
