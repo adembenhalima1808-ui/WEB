@@ -1,20 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-streamlit
-requests
-beautifulsoup4
-python-dotenv
-plotly
-langchain
-langchain-core
-langchain-community
-langchain-classic
-langchain-mistralai
-langchain-chroma
-langchain-text-splitters
-pypdf
-reportlab
-chromadb
-sentence-transformers
-tiktoken
-torch
-torchvision
+starlette>=0.40
+uvicorn>=0.30
+itsdangerous>=2.1
+requests>=2.31
+pypdf>=4.0
+pyyaml>=6.0
+reportlab>=4.0

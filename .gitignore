@@ -1,18 +1,20 @@
-# Security & Environment Variables
+# secrets
 .env
 
-# Dynamic Database Files (Let the live server generate its own)
-analytics.json
-config.json
-chat_logs.json
-live_chat.json
-
-# Python Cache & Virtual Environments
+# python
 __pycache__/
 *.pyc
-venv/
-env/
 .venv/
 
-# OS Files
+# OS / editor junk
 .DS_Store
+.Rhistory
+
+# runtime data (private visitor chats, analytics, caches)
+data/config.json
+data/analytics.json
+data/chat_logs.json
+data/live_chat.json
+data/brain_index.json
+data/resume_source.json
+data/*.log

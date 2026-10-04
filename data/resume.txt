@@ -1,0 +1,43 @@
+Adem Ben Halima
+Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027
+Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027.
+Email: adem@ben-halima.com | LinkedIn: https://www.linkedin.com/in/adembenhalima | GitHub: https://github.com/adembenhalima1808-ui | Cergy, France · Échange en Chine
+
+COMPETENCES
+IA & Data: RAG, APIs LLM
+Langages: Python, SQL, R, Java, C (avancé), C#
+Concepts & Architectures: Architecture MVC / PAC, Gestion des Deadlocks, Graphes (A*, Dijkstra, BFS)
+Outils: Git, Jira, Unix, JavaFX, Unity
+
+LANGUES
+Français: Bilingue
+Anglais: C1 - TOEFL 104/120
+Arabe: Maternel
+
+EXPERIENCE
+Professeur Particulier (Mathématiques & Physique) - Complétude (France, 01/2026 - Présent)
+- Accompagnement intensif en mathématiques/physique, aboutissant à une progression moyenne de 3 points sur la moyenne des élèves.
+Enseignant en Développement de Jeux Vidéo - GoMyCode (Tunisie, 08/2023 - Présent)
+- Mentorat de plus de 100 étudiants sur Unity et C#, avec un taux de réussite de 100 % sur la livraison de leurs projets.
+- Accompagnement des étudiants sur l’implémentation d’algorithmes de prise de décision et de pathfinding (IA).
+Conseiller de Vente & Consultant Digital - Ceramica (Tunisie, 2022 - 2025)
+- Optimisation du référencement naturel (SEO) et de la stratégie digitale à partir de l’analyse des données.
+
+PROJETS
+Portfolio Interactif & Assistant IA (RAG) (Projet Solo, 2025 - Présent): Application web Python : assistant IA répondant aux recruteurs sur mon profil.
+- Assistant RAG en Python : pipeline LangChain, OpenAI embeddings, ChromaDB et GPT-4o-mini.
+- Évalué sur un jeu de questions de test : 92 % de réponses correctes et 88 % de passages pertinents récupérés.
+- Memory Engine : stocke l’historique conversationnel localement pour maintenir le contexte multi-tours sans saturer la limite de tokens.
+- Contrôle d’accès RBAC avec 4 vues interactives et pilotage à distance via l’API Telegram.
+Impact: Automatisation de la présentation du profil aux recruteurs grâce à l’IA générative.
+Simulateur de Trafic d’Agents Autonomes (Projet Équipe - CY Tech, 2025): Simulation multi-agents en Java, réalisée en 4 semaines en Agile (sprints hebdo).
+- Pénalité de congestion dans A*/Dijkstra : intégration d’un coût dynamique (5000 × occupants attendus) réduisant le temps d’attente global de 40 %.
+- Ma contribution : développement du moteur de pathfinding dynamique, de la logique d’anticipation Smart Waiting et de l’UI.
+- Routage simultané de 21+ agents (4 profils, cycle de vie à 5 états) sur graphes dynamiques avec résolution de deadlocks.
+Impact: Résolution des goulots d’étranglement du trafic par l’optimisation algorithmique.
+
+FORMATION
+Diplôme d’Ingénieur en Informatique - CY Tech (Cergy, France, 09/2025 - Présent). Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.
+Semestre international - Xi’an Jiaotong-Liverpool University (Chine, 09/2026 - 02/2027)
+Classe Prépa (Top 5, L’Étudiant 2025) - IPEST (La Marsa, Tunisie, 09/2023 - 08/2025)
+Bac Maths - Mention TB (18,5/20) - Lycée Pilote Sousse (Tunisie, 09/2022 - 06/2023)

@@ -1,0 +1,109 @@
+resume:
+  name: 'Adem Ben Halima'
+  title: 'Élève Ingénieur | Stage IA / Data · 03/2027 - 08/2027'
+  summary: 'Élève-ingénieur à CY Tech (actuellement en semestre d’échange à Xi’an Jiaotong-Liverpool University), j’ai conçu un assistant RAG évalué et un simulateur multi-agents complexe (A*, résolution de deadlocks). Fort d’une formation rigoureuse en mathématiques (prépa IPEST) et d’une expérience d’enseignant en programmation, je recherche un stage de 6 mois en IA générative / Data, de mars à août 2027.'
+
+  contact:
+    phone: '+33 7 66 80 79 67'
+    email: 'adem@ben-halima.com'
+    address: 'Cergy, France · Échange en Chine'
+    linkedin: 'https://www.linkedin.com/in/adembenhalima'
+    github: 'https://github.com/adembenhalima1808-ui'
+
+  technical_expertise:
+    - resume_title: 'IA & Data'
+      skills:
+        - 'RAG'
+        - 'APIs LLM'
+    - resume_title: 'Langages'
+      skills:
+        - 'Python'
+        - 'SQL'
+        - 'R'
+        - 'Java'
+        - 'C (avancé)'
+        - 'C#'
+    - resume_title: 'Concepts & Architectures'
+      skills:
+        - 'Architecture MVC / PAC'
+        - 'Gestion des Deadlocks'
+        - 'Graphes (A*, Dijkstra, BFS)'
+    - resume_title: 'Outils'
+      skills:
+        - 'Git'
+        - 'Jira'
+        - 'Unix'
+        - 'JavaFX'
+        - 'Unity'
+
+  languages:
+    - language: 'Français'
+      proficiency: 'Bilingue'
+    - language: 'Anglais'
+      proficiency: 'C1 - TOEFL 104/120'
+    - language: 'Arabe'
+      proficiency: 'Maternel'
+
+  professional_experience:
+    - company: 'Complétude'
+      position: 'Professeur Particulier (Mathématiques & Physique)'
+      location: 'France'
+      duration: '01/2026 - Présent'
+      achievements:
+        - 'Accompagnement intensif en mathématiques/physique, aboutissant à une progression moyenne de 3 points sur la moyenne des élèves.'
+
+    - company: 'GoMyCode'
+      position: 'Enseignant en Développement de Jeux Vidéo'
+      location: 'Tunisie'
+      duration: '08/2023 - Présent'
+      achievements:
+        - 'Mentorat de plus de 100 étudiants sur Unity et C#, avec un taux de réussite de 100 % sur la livraison de leurs projets.'
+        - 'Accompagnement des étudiants sur l’implémentation d’algorithmes de prise de décision et de pathfinding (IA).'
+
+    - company: 'Ceramica'
+      position: 'Conseiller de Vente & Consultant Digital'
+      location: 'Tunisie'
+      duration: '2022 - 2025'
+      achievements:
+        - 'Optimisation du référencement naturel (SEO) et de la stratégie digitale à partir de l’analyse des données.'
+
+  independent_projects:
+    - name: 'Portfolio Interactif & Assistant IA (RAG)'
+      location: 'Projet Solo'
+      duration: '2025 - Présent'
+      description: 'Application web Python : assistant IA répondant aux recruteurs sur mon profil.'
+      achievements:
+        - 'Assistant RAG en Python : pipeline LangChain, OpenAI embeddings, ChromaDB et GPT-4o-mini.'
+        - 'Évalué sur un jeu de questions de test : 92 % de réponses correctes et 88 % de passages pertinents récupérés.'
+        - 'Memory Engine : stocke l’historique conversationnel localement pour maintenir le contexte multi-tours sans saturer la limite de tokens.'
+        - 'Contrôle d’accès RBAC avec 4 vues interactives et pilotage à distance via l’API Telegram.'
+      impact: 'Automatisation de la présentation du profil aux recruteurs grâce à l’IA générative.'
+
+    - name: 'Simulateur de Trafic d’Agents Autonomes'
+      location: 'Projet Équipe - CY Tech'
+      duration: '2025'
+      description: 'Simulation multi-agents en Java, réalisée en 4 semaines en Agile (sprints hebdo).'
+      achievements:
+        - 'Pénalité de congestion dans A*/Dijkstra : intégration d’un coût dynamique (5000 × occupants attendus) réduisant le temps d’attente global de 40 %.'
+        - 'Ma contribution : développement du moteur de pathfinding dynamique, de la logique d’anticipation Smart Waiting et de l’UI.'
+        - 'Routage simultané de 21+ agents (4 profils, cycle de vie à 5 états) sur graphes dynamiques avec résolution de deadlocks.'
+      impact: 'Résolution des goulots d’étranglement du trafic par l’optimisation algorithmique.'
+
+  education:
+    - institution: 'CY Tech'
+      program: 'Diplôme d’Ingénieur en Informatique'
+      location: 'Cergy, France'
+      duration: '09/2025 - Présent'
+      details: 'Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.'
+    - institution: 'Xi’an Jiaotong-Liverpool University'
+      program: 'Semestre international'
+      location: 'Chine'
+      duration: '09/2026 - 02/2027'
+    - institution: 'IPEST'
+      program: 'Classe Prépa (Top 5, L’Étudiant 2025)'
+      location: 'La Marsa, Tunisie'
+      duration: '09/2023 - 08/2025'
+    - institution: 'Lycée Pilote Sousse'
+      program: 'Bac Maths - Mention TB (18,5/20)'
+      location: 'Tunisie'
+      duration: '09/2022 - 06/2023'

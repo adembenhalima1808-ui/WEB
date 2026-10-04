@@ -1,0 +1,48 @@
+=== PROFILE ===
+Name: Adem Ben Halima
+Status: Engineering student (Diplôme d'Ingénieur en Informatique) at CY Tech, Cergy, France, since 09/2025.
+Current situation: international exchange semester at Xi'an Jiaotong-Liverpool University (XJTLU), China, 09/2026 to 02/2027.
+Looking for: a 6-month internship in generative AI / data, March to August 2027.
+Languages: French (bilingual), English (C1, TOEFL 104/120), Arabic (native).
+Contact: adem@ben-halima.com, LinkedIn linkedin.com/in/adembenhalima, GitHub github.com/adembenhalima1808-ui.
+Summary: Engineering student with rigorous mathematics training (IPEST prep school) and teaching experience in programming. Built an evaluated RAG assistant and a multi-agent traffic simulator (A*, deadlock resolution).
+
+=== SKILLS ===
+AI and data: RAG, LLM APIs.
+Languages: Python, SQL, R, Java, C (advanced), C#.
+Concepts and architectures: MVC / PAC architecture, deadlock handling, graph algorithms (A*, Dijkstra, BFS).
+Tools: Git, Jira, Unix, JavaFX, Unity.
+CY Tech coursework: Algorithmics, Linear Optimization, Probabilistic Models, Data Mining.
+Honest gaps: no professional developer experience in a company yet; limited classical machine learning (model training) experience so far.
+
+=== PROJECT 1: INTERACTIVE PORTFOLIO AND RAG AI ASSISTANT (solo, 2025 to present) ===
+A Python web application where an AI assistant answers recruiters' questions about Adem's profile (this website).
+Original version: RAG pipeline in Python with LangChain, OpenAI embeddings, ChromaDB and GPT-4o-mini.
+Evaluation on a set of test questions: 92% correct answers and 88% relevant passages retrieved.
+Memory Engine: stores conversation history locally to keep multi-turn context without exceeding the token limit.
+Role-based access control (RBAC) with 4 interactive views, and remote control through the Telegram API.
+Current rebuild: Starlette backend with a plain HTML/CSS/JS frontend, Mistral models for chat and embeddings, cosine-similarity retrieval, server-side sessions, and two-step admin login (password plus Telegram code).
+Impact: automates how Adem's profile is presented to recruiters using generative AI.
+
+=== PROJECT 2: AUTONOMOUS AGENT TRAFFIC SIMULATOR (team project at CY Tech, 2025) ===
+Multi-agent simulation in Java, built in 4 weeks using Agile (weekly sprints).
+Adem's contribution: the dynamic pathfinding engine, the "Smart Waiting" anticipation logic, and the UI.
+Congestion penalty in A*/Dijkstra: a dynamic cost (5000 x expected occupants) that reduced overall waiting time by 40%.
+Routes 21+ agents simultaneously (4 profiles, 5-state lifecycle) on dynamic graphs, with deadlock resolution.
+Impact: resolved traffic bottlenecks through algorithmic optimisation.
+
+=== EXPERIENCE ===
+Complétude, private tutor in mathematics and physics (France, 01/2026 to present): intensive coaching, average +3 points on students' grades.
+GoMyCode, game development instructor (Tunisia, 08/2023 to present): mentored 100+ students on Unity and C# with a 100% project delivery rate; guided them on decision-making and pathfinding (AI) algorithms.
+Ceramica, sales advisor and digital consultant (Tunisia, 2022 to 2025): improved SEO and digital strategy using data analysis.
+
+=== EDUCATION ===
+CY Tech, engineering degree in Computer Science (09/2025 to present).
+Xi'an Jiaotong-Liverpool University, international semester in China (09/2026 to 02/2027).
+IPEST, preparatory classes (09/2023 to 08/2025), ranked top 5 (L'Étudiant 2025).
+Lycée Pilote Sousse, Baccalaureate in Mathematics, Très Bien (18.5/20) (2022 to 2023).
+
+=== HOW TO TALK ABOUT ADEM ===
+Lead with generative AI / RAG, Python and data. Emphasise end-to-end projects, algorithmic optimisation and the strong mathematical foundation. Teaching 100+ students is proof of clear technical communication.
+Do not invent experience, employers, degrees or metrics beyond what is written here. If asked something not covered, say it is not in the notes and suggest contacting Adem by email.
+Do not give out a phone number.

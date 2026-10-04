@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitsune Agent Test Report</title>
+<meta name="description" content="How I tested my AI portfolio agent: graded questions, security checks, browser and accessibility tests, with screenshots.">
+<meta name="theme-color" content="#141210">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23FF7A00' d='M3 4l8 6h10l8-6-2 14-11 10L5 18z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/static/report/report.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="/">&larr; Back to the agent</a>
+    <span class="eyebrow">Test report · Kitsune agent</span>
+    <h1>How well does my AI twin answer recruiters?</h1>
+    <p class="muted" id="lede"></p>
+    <div class="meta-row" id="metaRow"></div>
+  </header>
+
+  <section aria-labelledby="h-verdict">
+    <h2 id="h-verdict" class="eyebrow small">Overall score</h2>
+    <div class="verdict">
+      <div class="gauge" id="gauge"></div>
+      <div class="tiles" id="tiles"></div>
+    </div>
+    <p class="muted small-text" id="weights"></p>
+  </section>
+
+  <section aria-labelledby="h-changes">
+    <h2 id="h-changes">What I changed after the first run</h2>
+    <p class="muted">The first run turned up a few real problems. I fixed them and ran the full test set again. The numbers on this page come from that second run.</p>
+    <div class="findings" id="changes"></div>
+    <h3 class="gap-top">What already worked</h3>
+    <div class="findings" id="strengths"></div>
+  </section>
+
+  <section aria-labelledby="h-chat">
+    <h2 id="h-chat">Every question and answer</h2>
+    <p class="muted">Each answer was graded as correct, partly correct or wrong, and flagged if it added details that aren’t in my CV or notes. Open any question to read the full reply.</p>
+    <div class="bars" id="catBars"></div>
+    <div class="filters" role="group" aria-label="Filter questions" id="filters"></div>
+    <div class="qlist" id="qlist"></div>
+  </section>
+
+  <section aria-labelledby="h-shots">
+    <h2 id="h-shots">Screenshots</h2>
+    <p class="muted">Taken in Chrome during the test run, on desktop and on a phone-sized screen. Click any image to enlarge it.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section aria-labelledby="h-sec">
+    <h2 id="h-sec">Security checks</h2>
+    <p class="muted" id="secLede"></p>
+    <div class="tablewrap"><table><thead><tr><th>Area</th><th>Check</th><th>Result</th><th>Observed</th></tr></thead><tbody id="secBody"></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="h-ui">
+    <h2 id="h-ui">Browser, accessibility and speed</h2>
+    <div class="two">
+      <div class="card"><h3>Walkthrough checks</h3><div class="tablewrap bare"><table><tbody id="uiBody"></tbody></table></div></div>
+      <div class="card"><h3>Accessibility scan (WCAG 2 A/AA)</h3><div id="axe"></div><h3 class="gap-top">Speed (local machine)</h3><div id="timings"></div></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-method">
+    <h2 id="h-method">How I tested it</h2>
+    <div class="card"><ul class="plain" id="method"></ul></div>
+  </section>
+</div>
+<script src="/static/report/report.js" defer></script>
+</body>
+</html>
