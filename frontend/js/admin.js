@@ -6,8 +6,8 @@ const guard = r => { if (r.status === 401 || r.status === 403) { toast('Session 
 const msg = (box, r, okText) => { box.className = r.ok ? 'err ok' : 'err'; box.textContent = r.ok ? okText : errText(r); };
 
 export function buildAdmin() {
-  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Vector Brain Injection']);
-  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); brain(tabs.panels[5]);
+  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Vector Brain Injection']);
+  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); brain(tabs.panels[6]);
   return h('div', {}, tabs.list, ...tabs.panels);
 }
 
@@ -88,7 +88,7 @@ const FIELDS = [
   ['skills_enabled', 'Show skills (sidebar badges + competencies radar)', 'bool'],
   ['skills_manual', 'Use my skills below instead of the AI-generated ones', 'bool'],
   ['projects_enabled', 'Show the Projects section (public repos from the GitHub URL above)', 'bool'],
-  ['projects_repos', 'Repos to show, comma-separated, in order (empty = the 6 most recently updated)', 'area'],
+  ['projects_repos', 'Fallback when the Projects tab has no cards: your repos to list, comma-separated (empty = 6 most recent)', 'area'],
   ['skills_stack', 'Skill badges (comma-separated)', 'area'], ['skills_radar', 'Radar skills, one "Name: score 0-100" per line (3-10 lines)', 'area'],
   ['persona_prompt', 'Master Persona Prompt', 'area'], ['private1_persona_prompt', 'Private area 1 persona prompt', 'area'],
   ['private2_persona_prompt', 'Private area 2 persona prompt', 'area'], ['maintenance_mode', 'Enable Maintenance Mode (locks out everyone but you)', 'bool'],
@@ -212,4 +212,45 @@ function profileSync(root) {
     h('h4', { text: '3. Rewrite the site text with AI' }), h('p', { class: 'hint', text: 'The AI drafts from the CV above. You review every line; nothing goes live until you apply it.' }),
     gen, dOut, drafts, apply);
   loadStatus();
+}
+
+// Project cards. Empty fields fall back to the repo's GitHub data (name, description, topics, website).
+const CARD_FIELDS = [
+  ['repo', 'GitHub repo (owner/name), any public repo, including shared ones'], ['title', 'Title (empty = repo name)'],
+  ['role', 'Role line, e.g. "Team of 5 · My part: ..."', 'wide'], ['tagline', 'Pitch, 1-2 sentences (empty = GitHub description)', 'area'],
+  ['highlights', 'Key numbers, one "value | label" per line (max 3)', 'area'], ['tech', 'Tech badges, comma-separated (empty = GitHub topics)'],
+  ['image', 'Cover image path, e.g. /static/projects/name.jpg (16:9)'], ['link', 'Extra button link (https://... or /path)'], ['link_label', 'Extra button label'],
+];
+function projectsPanel(root) {
+  const list = h('div', { class: 'drafts' }), out = h('p', { class: 'err', role: 'status' });
+  const toForm = c => ({ ...c, highlights: (c.highlights || []).map(x => `${x.value} | ${x.label}`).join('\n'), tech: (c.tech || []).join(', ') });
+  const fromForm = box => {
+    const v = k => box.querySelector(`[data-k="${k}"]`).value.trim();
+    return { repo: v('repo'), title: v('title'), role: v('role'), tagline: v('tagline'), image: v('image'), link: v('link'), link_label: v('link_label'),
+      highlights: v('highlights').split('\n').map(l => l.split('|')).filter(x => x[0].trim()).map(([a, ...b]) => ({ value: a.trim(), label: b.join('|').trim() })),
+      tech: v('tech').split(',').map(t => t.trim()).filter(Boolean) };
+  };
+  function cardBox(c) {
+    const f = toForm(c), form = h('div', { class: 'cfg' }), box = h('div', { class: 'draft' });
+    CARD_FIELDS.forEach(([k, label, type]) => {
+      const el = type === 'area' ? h('textarea', { class: 'textarea', rows: '3', 'data-k': k, 'aria-label': label }) : h('input', { class: 'field', 'data-k': k, 'aria-label': label });
+      el.value = f[k] || ''; form.append(h('div', { class: type ? 'wide' : '' }, h('label', { class: 'lbl', text: label }), el));
+    });
+    const move = d => { const sib = d < 0 ? box.previousElementSibling : box.nextElementSibling; if (sib) d < 0 ? sib.before(box) : sib.after(box); };
+    box.append(h('h4', { text: c.title || c.repo || 'New project' }), form, h('div', { class: 'row' },
+      h('button', { class: 'btn', type: 'button', text: '\u2191 Up', onclick: () => move(-1) }),
+      h('button', { class: 'btn', type: 'button', text: '\u2193 Down', onclick: () => move(1) }),
+      h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => box.remove() })));
+    return box;
+  }
+  const render = cards => list.replaceChildren(...cards.map(cardBox));
+  root.append(h('h3', { text: 'Projects' }),
+    h('p', { class: 'hint', text: 'Cards shown on the public page, in this order. Links, language, stars and dates come from GitHub automatically (refreshed hourly). With no cards, the page lists your own public repos instead.' }),
+    list, h('div', { class: 'row' },
+      h('button', { class: 'btn', type: 'button', text: '+ Add project', onclick: () => list.append(cardBox({})) }),
+      h('button', { class: 'btn primary', type: 'button', text: 'Save projects', onclick: async () => {
+        const r = await api('/api/admin/projects', { method: 'POST', body: { cards: [...list.children].map(fromForm) } }); if (!guard(r)) return;
+        msg(out, r, 'Saved. Reload the public page to see it. Invalid repo names, images or links were dropped.'); if (r.ok) render(r.data.cards);
+      } })), out);
+  api('/api/admin/projects').then(r => { if (guard(r) && r.ok) render(r.data.cards); });
 }

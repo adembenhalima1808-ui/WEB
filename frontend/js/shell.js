@@ -76,20 +76,31 @@ async function loadSkills(badges, radarBox) {
   if (radarBox) drawRadar(radarBox, r.data.categories, r.data.scores);
 }
 
-// Public GitHub repos (picked in the owner console). The whole section disappears when there is nothing to show.
+// Project cards: owner-written text merged with live GitHub data. The whole section disappears when there is nothing to show.
+const monthYear = d => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en', { month: 'short', year: 'numeric' }); };
+function projectCard(p) {
+  const main = p.url || p.link || null, ext = u => /^https:/.test(u) ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+  const meta = [p.stars ? `\u2605 ${p.stars}` : '', p.pushed ? `Updated ${monthYear(p.pushed)}` : ''].filter(Boolean).join(' \u00B7 ');
+  return h('article', { class: 'project' },
+    p.image ? h('a', { class: 'project-cover', href: main, tabindex: '-1', 'aria-hidden': 'true', ...ext(main || '') },
+      h('img', { src: p.image, alt: '', loading: 'lazy', width: '960', height: '540' }),
+      p.language ? h('span', { class: 'project-lang', text: p.language }) : null) : null,
+    h('div', { class: 'project-body' },
+      p.role ? h('p', { class: 'project-role', text: p.role }) : null,
+      h('h4', {}, main ? h('a', { href: main, text: p.title, ...ext(main) }) : p.title),
+      p.tagline ? h('p', { class: 'tagline', text: p.tagline }) : null,
+      p.highlights.length ? h('div', { class: 'project-stats' }, p.highlights.map(x => h('div', {}, h('b', { text: x.value }), h('span', { text: x.label })))) : null,
+      p.tech.length ? h('div', { class: 'badges' }, p.tech.map(t => h('span', { class: 'badge', text: t }))) : null,
+      h('div', { class: 'project-foot' },
+        meta || (!p.image && p.language) ? h('span', { class: 'meta-line', text: [!p.image ? p.language : '', meta].filter(Boolean).join(' \u00B7 ') }) : null,
+        p.url ? h('a', { class: 'btn', href: p.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${p.title} source code on GitHub` }, icon(ICONS.github), 'Code') : null,
+        p.link ? h('a', { class: 'btn primary', href: p.link, ...ext(p.link) }, p.link_label + (/^https:/.test(p.link) ? ' \u2197' : '')) : null)));
+}
 async function loadProjects(section, grid) {
   const r = await api('/api/projects');
   const list = r.ok ? r.data.projects || [] : [];
   if (!list.length) { section.remove(); return; }
-  grid.replaceChildren(...list.map(p => {
-    const meta = [p.language, p.stars ? `\u2605 ${p.stars}` : '', p.pushed ? `Updated ${p.pushed}` : ''].filter(Boolean).join(' \u00B7 ');
-    return h('article', { class: 'project' },
-      h('h4', {}, h('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer', text: p.name })),
-      p.description ? h('p', { text: p.description }) : null,
-      p.topics.length ? h('div', { class: 'badges' }, p.topics.map(t => h('span', { class: 'badge', text: t }))) : null,
-      h('div', { class: 'project-foot' }, h('span', { class: 'muted', text: meta }),
-        p.homepage ? h('a', { href: p.homepage, target: '_blank', rel: 'noopener noreferrer', text: 'Live demo \u2197' }) : null));
-  }));
+  grid.replaceChildren(...list.map(projectCard));
 }
 
 function wireMenu() {
@@ -167,7 +178,7 @@ export async function buildApp({ role, cfg, me }) {
   const greeting = `${greetingWord()}. I am the Kitsune Agent, Adem's autonomous digital twin. \u{1F98A} ${ctxLine}\n\n` +
     'Welcome to the Command Center. Here is your tactical breakdown:\n\n' +
     (showSkills ? "- **The Radar Web (above):** a live view of Adem's core engineering competencies, re-weighted for your company.\n" : '') +
-    (cfg.projects_enabled !== false ? "- **Projects (above):** Adem's public work, straight from GitHub.\n" : '') +
+    (cfg.projects_enabled !== false ? "- **Projects (above):** what Adem has built, with the code on GitHub.\n" : '') +
     "- **Direct Interrogation (here):** ask me anything about Adem's experience, projects or how he solves problems.\n" +
     '- **Agentic Operations (next tab):** feed me a job description and I will calculate a fit score, draft a cover letter or generate interview questions.\n' +
     (comm ? "- **Direct Comm-Link (3rd tab):** bypass the AI and ping Adem's phone in real time.\n" : '') +

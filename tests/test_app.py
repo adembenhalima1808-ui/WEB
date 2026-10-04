@@ -43,11 +43,21 @@ GITHUB_CALLS = []
 
 def fake_repos(user):
     GITHUB_CALLS.append(user)
-    return [{"name": n, "description": "d", "url": "https://github.com/x/" + n, "homepage": "", "language": "Python",
+    return [{"repo": user + "/" + n, "name": n, "description": "d", "url": "https://github.com/x/" + n, "homepage": "", "language": "Python",
              "stars": 0, "topics": [], "pushed": "2026-10-01"} for n in ("alpha", "beta", "gamma")]
 
 
 github.fetch_repos = fake_repos
+
+
+def fake_repo(full_name):
+    if full_name == "gone/away":
+        raise RuntimeError("404")
+    return {"repo": full_name, "name": full_name.split("/")[1], "description": "From GitHub", "url": "https://github.com/" + full_name,
+            "homepage": "https://demo.example", "language": "Java", "stars": 3, "topics": ["sim"], "pushed": "2026-06-13"}
+
+
+github.fetch_repo = fake_repo
 
 PORT = 8765
 BASE = f"http://127.0.0.1:{PORT}"
@@ -77,8 +87,8 @@ def admin_session():
     return s
 
 
-ADMIN_GETS = ["/api/admin/overview", "/api/admin/config", "/api/admin/brain", "/api/admin/profile"]
-ADMIN_POSTS = ["/api/admin/config", "/api/admin/telegram/test", "/api/admin/telegram/clear", "/api/admin/brain",
+ADMIN_GETS = ["/api/admin/overview", "/api/admin/projects", "/api/admin/config", "/api/admin/brain", "/api/admin/profile"]
+ADMIN_POSTS = ["/api/admin/config", "/api/admin/projects", "/api/admin/telegram/test", "/api/admin/telegram/clear", "/api/admin/brain",
                "/api/admin/brain/append", "/api/admin/clear-cache", "/api/admin/resume", "/api/admin/wipe-history",
                "/api/admin/sim/turn", "/api/admin/sim/evaluate", "/api/admin/sim/apply", "/api/admin/resume/reset",
                "/api/admin/profile/yaml", "/api/admin/profile/draft", "/api/admin/profile/apply"]
@@ -375,18 +385,48 @@ class PublicTests(unittest.TestCase):
     def test_projects_from_github(self):
         adm = admin_session()
         github.clear_cache()
+        saved = adm.get(BASE + "/api/admin/projects").json()["cards"]
+        post(adm, "/api/admin/projects", {"cards": []})
         try:
             post(adm, "/api/admin/config", {"github_url": "https://github.com/someone", "projects_repos": "gamma, nope, Alpha"})
             r = requests.get(BASE + "/api/projects").json()
-            self.assertEqual([p["name"] for p in r["projects"]], ["gamma", "alpha"])
+            self.assertEqual([p["title"] for p in r["projects"]], ["gamma", "alpha"])
             requests.get(BASE + "/api/projects")
             self.assertEqual(GITHUB_CALLS.count("someone"), 1)
             post(adm, "/api/admin/config", {"projects_enabled": False})
             self.assertEqual(requests.get(BASE + "/api/projects").json(), {"enabled": False, "projects": []})
             self.assertFalse(requests.get(BASE + "/api/config").json()["projects_enabled"])
         finally:
+            post(adm, "/api/admin/projects", {"cards": saved})
             post(adm, "/api/admin/config", {"projects_enabled": True, "projects_repos": "",
                                             "github_url": "https://github.com/adembenhalima1808-ui"})
+
+    def test_project_cards(self):
+        adm = admin_session()
+        saved = adm.get(BASE + "/api/admin/projects").json()["cards"]
+        self.assertTrue(saved)                                    # ships with default cards
+        github.clear_cache()
+        try:
+            r = post(adm, "/api/admin/projects", {"cards": [
+                {"repo": "https://github.com/Friend/Group-Proj", "title": "", "role": "Team of 5",
+                 "highlights": [{"value": "-40%", "label": "wait"}, {"value": "", "label": "dropped"}],
+                 "image": "/static/projects/x.jpg", "link": "javascript:alert(1)"},
+                {"repo": "bad repo name!", "title": "Nope"},
+                {"repo": "gone/away", "title": "Still shown", "image": "https://evil.example/x.png"},
+                "junk"]}).json()
+            self.assertEqual([c["repo"] for c in r["cards"]], ["Friend/Group-Proj", "gone/away"])
+            self.assertEqual(r["cards"][0]["link"], "")
+            self.assertEqual(r["cards"][1]["image"], "")
+            self.assertEqual(r["cards"][0]["highlights"], [{"value": "-40%", "label": "wait"}])
+            p = requests.get(BASE + "/api/projects").json()["projects"]
+            self.assertEqual(p[0]["title"], "Group-Proj")             # empty title falls back to GitHub
+            self.assertEqual(p[0]["tagline"], "From GitHub")
+            self.assertEqual(p[0]["link"], "https://demo.example")
+            self.assertEqual(p[0]["language"], "Java")
+            self.assertEqual(p[1]["url"], "https://github.com/gone/away")   # GitHub failure still renders the card
+            self.assertEqual(requests.post(BASE + "/api/admin/projects", json={"cards": []}).status_code in (401, 403), True)
+        finally:
+            post(adm, "/api/admin/projects", {"cards": saved})
 
     def test_github_username_and_skill_spread(self):
         self.assertEqual(github.username("https://github.com/adembenhalima1808-ui"), "adembenhalima1808-ui")

@@ -20,6 +20,27 @@ DEFAULT_CONFIG = {
                      "LLM Engineering: 85"),
     "projects_enabled": True,
     "projects_repos": "",
+    # Owner-written project cards (edited in the console's Projects tab). GitHub fills in links, language and dates.
+    "projects_cards": [
+        {"repo": "Ilias-Mrtd/Projet--GroupeD", "title": "Warehouse Robot Traffic Simulator",
+         "tagline": ("JavaFX simulation of autonomous robots moving through a warehouse network: congestion-aware "
+                     "pathfinding, capacity-limited aisles with queues, and a live heatmap that exposes bottlenecks."),
+         "role": "Team of 5 · CY Tech · My part: dynamic pathfinding engine, Smart Waiting logic and UI",
+         "highlights": [{"value": "−40%", "label": "global waiting time"},
+                        {"value": "21+", "label": "agents routed at once"},
+                        {"value": "4", "label": "agent behaviour profiles"}],
+         "tech": ["Java", "JavaFX", "Maven", "Dijkstra", "A*", "MVC"],
+         "image": "/static/projects/warehouse-sim.jpg", "link": "", "link_label": ""},
+        {"repo": "adembenhalima1808-ui/WEB", "title": "Kitsune Agent: my AI portfolio twin",
+         "tagline": ("The site you are on. A RAG assistant that answers recruiters from my CV, scores job fit, "
+                     "drafts cover letters and forwards messages to my phone through Telegram."),
+         "role": "Solo project · 2025 to present",
+         "highlights": [{"value": "92%", "label": "correct answers on the test set"},
+                        {"value": "88%", "label": "relevant passages retrieved"},
+                        {"value": "4", "label": "access-controlled views"}],
+         "tech": ["Python", "Starlette", "Mistral AI", "RAG", "Telegram API", "Docker"],
+         "image": "/static/projects/kitsune.jpg", "link": "/report", "link_label": "How it was tested"},
+    ],
     "refresh_rate": 5,
     "telegram_last_update_id": 0,
     "linkedin_url": "https://www.linkedin.com/in/adembenhalima",

@@ -10,7 +10,7 @@ An AI "digital twin" portfolio site. Recruiters type their company name, and the
 
 - **Direct Interrogation:** a RAG chatbot that answers only from the CV and a curated knowledge file, with guardrails against prompt injection.
 - **Competencies radar:** skills re-weighted for the visitor's company by the LLM. You can also write them yourself or turn them off (see below).
-- **Projects:** cards for your public GitHub repos, fetched live and cached for an hour.
+- **Projects:** project cards with cover images, key numbers and live GitHub data.
 - **Agentic Operations:** paste a job description and get a fit score, a cover letter or interview questions.
 - **Direct Comm-Link:** visitors message my phone through Telegram, and I reply from there.
 - **Owner command center:** analytics, chat logs, a CMS for all site text, CV upload with AI-drafted copy, an interview simulator, and a knowledge-base editor.
@@ -73,12 +73,9 @@ Log in with `sudo override`, open **CMS & Identity**, then press **Inject Overri
 
 ## Managing projects
 
-The Projects section lists the public, non-fork repos of the account in **GitHub URL (https)**. In **CMS & Identity**:
+Project cards live in the console's **Projects** tab. Each card points at any public GitHub repo, including ones shared with you (`owner/name`), and adds your own title, role, pitch, up to three key numbers, tech badges, a cover image (`/static/projects/*.jpg`, 16:9) and an optional extra button. Empty fields fall back to the repo's GitHub name, description, topics and website. Links, language, stars and last update come from GitHub, refreshed hourly.
 
-- **Show the Projects section** turns it on or off.
-- **Repos to show** takes repo names, comma-separated, in the order you want them. Leave it empty to show the 6 most recently updated.
-
-Each card uses the repo's GitHub description, topics and website, so set those on GitHub (the gear icon next to "About" on the repo page).
+With no cards, the page lists your own public repos instead (choose which under **CMS & Identity**). The whole section can be hidden there too.
 
 ## Editing content
 

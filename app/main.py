@@ -287,7 +287,8 @@ def h_projects(ctx, body):
     cfg = load_config()
     if not cfg.get("projects_enabled", True):
         return {"enabled": False, "projects": []}
-    return {"enabled": True, "projects": github.projects(cfg.get("github_url"), cfg.get("projects_repos"))}
+    return {"enabled": True, "projects": github.projects(cfg.get("github_url"), cfg.get("projects_repos"),
+                                                         cfg.get("projects_cards"))}
 
 
 @api(limit=20, window=60, public_maintenance=True)
@@ -602,6 +603,20 @@ def h_admin_config_put(ctx, body):
     return {"ok": True}
 
 
+@api(roles=("admin",), methods=("GET",))
+def h_admin_projects_get(ctx, body):
+    return {"cards": load_config().get("projects_cards", [])}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_projects_put(ctx, body):
+    cards = github.clean_cards(body.get("cards"))
+    cfg = load_config()
+    cfg["projects_cards"] = cards
+    save_config(cfg)
+    return {"ok": True, "cards": cards}
+
+
 @api(roles=("admin",), limit=10, window=60)
 def h_admin_tg_test(ctx, body):
     return {"delivered": telegram.send_alert("Test alert from the admin panel.")}
@@ -815,6 +830,8 @@ routes = [
     Route("/api/admin/overview", h_admin_overview, methods=["GET"]),
     Route("/api/admin/config", h_admin_config_get, methods=["GET"]),
     Route("/api/admin/config", h_admin_config_put, methods=["POST"]),
+    Route("/api/admin/projects", h_admin_projects_get, methods=["GET"]),
+    Route("/api/admin/projects", h_admin_projects_put, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),
     Route("/api/admin/telegram/clear", h_admin_tg_clear, methods=["POST"]),
     Route("/api/admin/brain", h_admin_brain_get, methods=["GET"]),
