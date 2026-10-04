@@ -428,6 +428,15 @@ class PublicTests(unittest.TestCase):
         finally:
             post(adm, "/api/admin/projects", {"cards": saved})
 
+    def test_fit_score_cap(self):
+        two = "1. **Final year** \u2013 No (2nd year)\n2. **Python** \u2013 Yes\n3. **PyTorch** \u2013 No\n\n**Fit Score:** 70 (capped due to one No)\n\nGaps"
+        self.assertIn("**Fit Score:** 55/100 (capped: 2 must-have requirements not met)", main.cap_fit(two))
+        self.assertTrue(main.cap_fit(two).endswith("\n\nGaps"))
+        one = "- Python: Yes\n- PyTorch: No\nFit Score: 85/100"
+        self.assertEqual(main.cap_fit(one), "- Python: Yes\n- PyTorch: No\nFit Score: 70/100 (capped: 1 must-have requirement not met)")
+        ok = "- Python: Yes\n- Notebooks: Yes\nFit Score: 92/100 strong"
+        self.assertEqual(main.cap_fit(ok), ok)
+
     def test_github_username_and_skill_spread(self):
         self.assertEqual(github.username("https://github.com/adembenhalima1808-ui"), "adembenhalima1808-ui")
         self.assertEqual(github.username("https://evil.com/x"), "")

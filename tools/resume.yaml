@@ -91,7 +91,7 @@ resume:
 
   education:
     - institution: 'CY Tech'
-      program: 'Diplôme d’Ingénieur en Informatique'
+      program: 'Diplôme d’Ingénieur en Informatique (2e année)'
       location: 'Cergy, France'
       duration: '09/2025 - Présent'
       details: 'Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.'

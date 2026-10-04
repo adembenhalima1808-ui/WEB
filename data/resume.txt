@@ -37,7 +37,7 @@ Simulateur de Trafic d’Agents Autonomes (Projet Équipe - CY Tech, 2025): Simu
 Impact: Résolution des goulots d’étranglement du trafic par l’optimisation algorithmique.
 
 FORMATION
-Diplôme d’Ingénieur en Informatique - CY Tech (Cergy, France, 09/2025 - Présent). Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.
+Diplôme d’Ingénieur en Informatique (2e année) - CY Tech (Cergy, France, 09/2025 - Présent). Cours suivis : Algorithmique, Optimisation Linéaire, Modèles Probabilistes, Exploration de données.
 Semestre international - Xi’an Jiaotong-Liverpool University (Chine, 09/2026 - 02/2027)
 Classe Prépa (Top 5, L’Étudiant 2025) - IPEST (La Marsa, Tunisie, 09/2023 - 08/2025)
 Bac Maths - Mention TB (18,5/20) - Lycée Pilote Sousse (Tunisie, 09/2022 - 06/2023)

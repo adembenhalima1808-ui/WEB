@@ -1,6 +1,7 @@
 === PROFILE ===
 Name: Adem Ben Halima
-Status: Engineering student (Diplôme d'Ingénieur en Informatique) at CY Tech, Cergy, France, since 09/2025.
+Status: Engineering student (Diplôme d'Ingénieur en Informatique) at CY Tech, Cergy, France, since 09/2025. In 2026-2027 he is in his 2nd year at CY Tech, which is his 4th year of higher education after the baccalaureate (2 years of preparatory classes at IPEST, then CY Tech). He is not a final-year student.
+Nationality and work authorization: Tunisian national holding a French student residence permit. The internship is part of his CY Tech engineering curriculum.
 Current situation: international exchange semester at Xi'an Jiaotong-Liverpool University (XJTLU), China, 09/2026 to 02/2027.
 Looking for: a 6-month internship in generative AI / data, March to August 2027.
 Languages: French (bilingual), English (C1, TOEFL 104/120), Arabic (native).
@@ -13,12 +14,12 @@ Languages: Python, SQL, R, Java, C (advanced), C#.
 Concepts and architectures: MVC / PAC architecture, deadlock handling, graph algorithms (A*, Dijkstra, BFS).
 Tools: Git, Jira, Unix, JavaFX, Unity.
 CY Tech coursework: Algorithmics, Linear Optimization, Probabilistic Models, Data Mining.
-Honest gaps: no professional developer experience in a company yet; limited classical machine learning (model training) experience so far.
+Honest gaps: no professional developer experience in a company yet. He has never trained a machine learning model himself (no PyTorch, TensorFlow or scikit-learn model training, no fine-tuning).
 
 === PROJECT 1: INTERACTIVE PORTFOLIO AND RAG AI ASSISTANT (solo, 2025 to present) ===
 A Python web application where an AI assistant answers recruiters' questions about Adem's profile (this website).
 Original version: RAG pipeline in Python with LangChain, OpenAI embeddings, ChromaDB and GPT-4o-mini.
-Evaluation of the original version on a set of test questions: 92% correct answers and 88% relevant passages retrieved.
+Evaluation of the original version on a set of test questions: 92% correct answers and 88% relevant passages retrieved. (The number of questions and the grading method of that first evaluation are not recorded; do not state them.)
 Memory Engine (original version): stored conversation history locally to keep multi-turn context without exceeding the token limit.
 Role-based access control (RBAC) with 4 interactive views, and remote control through the Telegram API.
 Current rebuild: Starlette backend with a plain HTML/CSS/JS frontend, Mistral models for chat and embeddings, cosine-similarity retrieval, server-side sessions, and two-step admin login (password plus Telegram code).
@@ -42,6 +43,18 @@ CY Tech, engineering degree in Computer Science (09/2025 to present).
 Xi'an Jiaotong-Liverpool University, international semester in China (09/2026 to 02/2027).
 IPEST, preparatory classes (09/2023 to 08/2025), ranked top 5 (L'Étudiant 2025).
 Lycée Pilote Sousse, Baccalaureate in Mathematics, Très Bien (18.5/20) (2022 to 2023).
+
+=== RECRUITER FAQ ===
+Q: What year of study is Adem in? Is he a final-year student?
+A: 2nd year of the CY Tech engineering program (4th year after the baccalaureate). He is not in his final year.
+Q: Does Adem need a visa or work permit? What is his nationality?
+A: He is Tunisian and holds a French student residence permit. The internship is part of his engineering curriculum at CY Tech. Nothing more is recorded about permits or paperwork: do not add any conclusion (such as whether another permit is needed); for paperwork questions, point to adem@ben-halima.com.
+Q: Has Adem trained machine learning models? Does he know PyTorch, TensorFlow or fine-tuning?
+A: Not yet. He has never trained a model himself. His AI experience so far is building and evaluating applications on top of LLM APIs: RAG pipelines, embeddings, retrieval, and evaluation with a second model as judge. Related coursework at CY Tech: probabilistic models, data mining, linear optimization.
+Q: What would Adem improve next on his projects? What are his future plans for them?
+A: Not recorded in his notes. Do not suggest improvements on his behalf; invite the visitor to ask him directly at adem@ben-halima.com or in an interview.
+Q: When is Adem available?
+A: For a 6-month internship from March to August 2027, after his exchange semester in China ends in February 2027.
 
 === HOW TO TALK ABOUT ADEM ===
 Lead with generative AI / RAG, Python and data. Emphasise end-to-end projects, algorithmic optimisation and the strong mathematical foundation. Teaching 100+ students is proof of clear technical communication.
