@@ -6,8 +6,8 @@ const guard = r => { if (r.status === 401 || r.status === 403) { toast('Session 
 const msg = (box, r, okText) => { box.className = r.ok ? 'err ok' : 'err'; box.textContent = r.ok ? okText : errText(r); };
 
 export function buildAdmin() {
-  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Vector Brain Injection']);
-  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); brain(tabs.panels[6]);
+  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Recommendations', 'Vector Brain Injection']);
+  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); testimonialsPanel(tabs.panels[6]); brain(tabs.panels[7]);
   return h('div', {}, tabs.list, ...tabs.panels);
 }
 
@@ -88,6 +88,7 @@ const FIELDS = [
   ['skills_enabled', 'Show skills (sidebar badges + competencies radar)', 'bool'],
   ['skills_manual', 'Use my skills below instead of the AI-generated ones', 'bool'],
   ['projects_enabled', 'Show the Projects section (public repos from the GitHub URL above)', 'bool'],
+  ['testimonials_enabled', 'Show the "What people say" recommendations section', 'bool'],
   ['projects_repos', 'Fallback when the Projects tab has no cards: your repos to list, comma-separated (empty = 6 most recent)', 'area'],
   ['skills_stack', 'Skill badges (comma-separated)', 'area'], ['skills_radar', 'Radar skills, one "Name: score 0-100" per line (3-10 lines)', 'area'],
   ['persona_prompt', 'Master Persona Prompt', 'area'], ['private1_persona_prompt', 'Private area 1 persona prompt', 'area'],
@@ -253,4 +254,40 @@ function projectsPanel(root) {
         msg(out, r, 'Saved. Reload the public page to see it. Invalid repo names, images or links were dropped.'); if (r.ok) render(r.data.cards);
       } })), out);
   api('/api/admin/projects').then(r => { if (guard(r) && r.ok) render(r.data.cards); });
+}
+
+// Recommendations. The chatbot quotes these word for word, so paste them exactly as written.
+const REC_FIELDS = [
+  ['name', 'Name'], ['title', 'Their title, e.g. "Manager, GoMyCode Sousse"'], ['relation', 'How they know you, e.g. "Managed Adem directly"', 'wide'],
+  ['date', 'Date, e.g. "September 2026"'], ['linkedin_url', 'LinkedIn link where it can be checked (empty = none)'],
+  ['highlight', 'Lead sentence shown in large type (copy it exactly from the text)', 'area'], ['text', 'Full text, exactly as written (blank line between paragraphs)', 'area'],
+];
+function testimonialsPanel(root) {
+  const list = h('div', { class: 'drafts' }), out = h('p', { class: 'err', role: 'status' });
+  function box(t) {
+    const form = h('div', { class: 'cfg' }), b = h('div', { class: 'draft' });
+    REC_FIELDS.forEach(([k, label, type]) => {
+      const el = type === 'area' ? h('textarea', { class: 'textarea', rows: k === 'text' ? '7' : '2', 'data-k': k, 'aria-label': label }) : h('input', { class: 'field', 'data-k': k, 'aria-label': label });
+      el.value = t[k] || ''; form.append(h('div', { class: type ? 'wide' : '' }, h('label', { class: 'lbl', text: label }), el));
+    });
+    const letter = h('input', { type: 'checkbox', 'data-k': 'letter' }); letter.checked = !!t.letter;
+    form.append(h('div', { class: 'check wide' }, letter, h('label', { text: 'I also have a signed letter from them (shows a "Request the signed letter" button)' })));
+    const move = d => { const sib = d < 0 ? b.previousElementSibling : b.nextElementSibling; if (sib) d < 0 ? sib.before(b) : sib.after(b); };
+    b.append(h('h4', { text: t.name || 'New recommendation' }), form, h('div', { class: 'row' },
+      h('button', { class: 'btn', type: 'button', text: '\u2191 Up', onclick: () => move(-1) }),
+      h('button', { class: 'btn', type: 'button', text: '\u2193 Down', onclick: () => move(1) }),
+      h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => b.remove() })));
+    return b;
+  }
+  const read = b => { const o = {}; b.querySelectorAll('[data-k]').forEach(el => { o[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value.trim(); }); return o; };
+  const render = items => list.replaceChildren(...items.map(box));
+  root.append(h('h3', { text: 'Recommendations' }),
+    h('p', { class: 'hint', text: 'Shown as "What people say" on the public page, and quoted word for word by the chatbot. Only add people who agreed to be named.' }),
+    list, h('div', { class: 'row' },
+      h('button', { class: 'btn', type: 'button', text: '+ Add recommendation', onclick: () => list.append(box({})) }),
+      h('button', { class: 'btn primary', type: 'button', text: 'Save recommendations', onclick: async () => {
+        const r = await api('/api/admin/testimonials', { method: 'POST', body: { testimonials: [...list.children].map(read) } }); if (!guard(r)) return;
+        msg(out, r, 'Saved. The page and the chatbot use them right away. Entries without a name or text were dropped.'); if (r.ok) render(r.data.testimonials);
+      } })), out);
+  api('/api/admin/testimonials').then(r => { if (guard(r) && r.ok) render(r.data.testimonials); });
 }

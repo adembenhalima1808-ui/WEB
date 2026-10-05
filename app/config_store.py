@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
     "skills_radar": ("Machine Learning: 70\nPython & RAG: 90\nData Mining: 65\nDevOps: 70\nAlgorithms: 80\n"
                      "LLM Engineering: 85"),
     "projects_enabled": True,
+    "testimonials_enabled": True,
     "projects_repos": "",
     # Owner-written project cards (edited in the console's Projects tab). GitHub fills in links, language and dates.
     "projects_cards": [
@@ -73,7 +74,7 @@ DEFAULT_CONFIG = {
 
 # Fields the anonymous public may see.
 PUBLIC_FIELDS = ["title", "sidebar_subtitle", "role_title", "location", "intro_text", "status_text",
-                 "status_color", "maintenance_mode", "maintenance_reason", "human_comm_enabled", "skills_enabled", "projects_enabled",
+                 "status_color", "maintenance_mode", "maintenance_reason", "human_comm_enabled", "skills_enabled", "projects_enabled", "testimonials_enabled",
                  "refresh_rate",
                  "linkedin_url", "github_url", "email"]
 
@@ -81,7 +82,7 @@ PUBLIC_FIELDS = ["title", "sidebar_subtitle", "role_title", "location", "intro_t
 EDITABLE = {"title": str, "sidebar_subtitle": str, "role_title": str, "location": str, "intro_text": str,
             "status_text": str, "status_color": str, "maintenance_mode": bool, "maintenance_reason": str,
             "human_comm_enabled": bool, "skills_enabled": bool, "skills_manual": bool, "skills_stack": str,
-            "skills_radar": str, "projects_enabled": bool, "projects_repos": str, "refresh_rate": int, "linkedin_url": str, "github_url": str, "email": str,
+            "skills_radar": str, "projects_enabled": bool, "testimonials_enabled": bool, "projects_repos": str, "refresh_rate": int, "linkedin_url": str, "github_url": str, "email": str,
             "persona_prompt": str,
             "private1_persona_prompt": str, "private2_persona_prompt": str}
 

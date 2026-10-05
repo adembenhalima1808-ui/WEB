@@ -11,6 +11,7 @@ import threading
 from . import mistral
 from .storage import read_text, read_json, write_json
 from .resume import resume_text
+from . import testimonials
 
 CHUNK = 1000
 OVERLAP = 200
@@ -31,7 +32,7 @@ def key_facts():
     honest gaps must never depend on the retriever happening to pick them."""
     keep = [p.strip() for p in re.split(r"(?m)^(?==== )", brain_text())
             if p.startswith(("=== PROFILE", "=== SKILLS", "=== RECRUITER FAQ"))]
-    return "\n\n".join(keep)[:4000]
+    return ("\n\n".join(keep)[:4000] + "\n\n" + testimonials.for_prompt()).strip()
 
 
 def split(text, size=CHUNK, overlap=OVERLAP):

@@ -23,7 +23,7 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-from . import github, mistral, profile, rag, resume, security, settings, telegram
+from . import github, mistral, profile, rag, resume, security, settings, telegram, testimonials
 from .config_store import DEFAULT_CONFIG, EDITABLE, load_config, public_config, save_config
 from .security import clean_text, limiter
 from .storage import increment_metric, read_json, read_text, update_json, write_json, write_text
@@ -622,6 +622,27 @@ def h_admin_config_put(ctx, body):
     return {"ok": True}
 
 
+@api(roles=None, limit=30, window=60, public_maintenance=True, methods=("GET",))
+def h_testimonials(ctx, body):
+    if not load_config().get("testimonials_enabled", True):
+        return {"enabled": False, "testimonials": []}
+    return {"enabled": True, "testimonials": testimonials.current()}
+
+
+@api(roles=("admin",), methods=("GET",))
+def h_admin_testimonials_get(ctx, body):
+    return {"testimonials": testimonials.current()}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_testimonials_put(ctx, body):
+    items = testimonials.clean(body.get("testimonials"))
+    cfg = load_config()
+    cfg["testimonials"] = items
+    save_config(cfg)
+    return {"ok": True, "testimonials": items}
+
+
 @api(roles=("admin",), methods=("GET",))
 def h_admin_projects_get(ctx, body):
     return {"cards": load_config().get("projects_cards", [])}
@@ -830,6 +851,7 @@ routes = [
     Route("/api/gate", h_gate, methods=["POST"]),
     Route("/api/skills", h_skills, methods=["GET"]),
     Route("/api/projects", h_projects, methods=["GET"]),
+    Route("/api/testimonials", h_testimonials, methods=["GET"]),
     Route("/api/chat", h_chat, methods=["POST"]),
     Route("/api/suggest", h_suggest, methods=["POST"]),
     Route("/api/agent", h_agent, methods=["POST"]),
@@ -849,6 +871,8 @@ routes = [
     Route("/api/admin/overview", h_admin_overview, methods=["GET"]),
     Route("/api/admin/config", h_admin_config_get, methods=["GET"]),
     Route("/api/admin/config", h_admin_config_put, methods=["POST"]),
+    Route("/api/admin/testimonials", h_admin_testimonials_get, methods=["GET"]),
+    Route("/api/admin/testimonials", h_admin_testimonials_put, methods=["POST"]),
     Route("/api/admin/projects", h_admin_projects_get, methods=["GET"]),
     Route("/api/admin/projects", h_admin_projects_put, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),

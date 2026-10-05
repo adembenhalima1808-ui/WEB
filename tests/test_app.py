@@ -87,8 +87,8 @@ def admin_session():
     return s
 
 
-ADMIN_GETS = ["/api/admin/overview", "/api/admin/projects", "/api/admin/config", "/api/admin/brain", "/api/admin/profile"]
-ADMIN_POSTS = ["/api/admin/config", "/api/admin/projects", "/api/admin/telegram/test", "/api/admin/telegram/clear", "/api/admin/brain",
+ADMIN_GETS = ["/api/admin/overview", "/api/admin/testimonials", "/api/admin/projects", "/api/admin/config", "/api/admin/brain", "/api/admin/profile"]
+ADMIN_POSTS = ["/api/admin/config", "/api/admin/testimonials", "/api/admin/projects", "/api/admin/telegram/test", "/api/admin/telegram/clear", "/api/admin/brain",
                "/api/admin/brain/append", "/api/admin/clear-cache", "/api/admin/resume", "/api/admin/wipe-history",
                "/api/admin/sim/turn", "/api/admin/sim/evaluate", "/api/admin/sim/apply", "/api/admin/resume/reset",
                "/api/admin/profile/yaml", "/api/admin/profile/draft", "/api/admin/profile/apply"]
@@ -436,6 +436,27 @@ class PublicTests(unittest.TestCase):
         self.assertEqual(main.cap_fit(one), "- Python: Yes\n- PyTorch: No\nFit Score: 70/100 (capped: 1 must-have requirement not met)")
         ok = "- Python: Yes\n- Notebooks: Yes\nFit Score: 92/100 strong"
         self.assertEqual(main.cap_fit(ok), ok)
+
+    def test_testimonials(self):
+        pub = requests.get(BASE + "/api/testimonials").json()
+        self.assertTrue(pub["enabled"])
+        self.assertIn("Sabrine Loussaief", [t["name"] for t in pub["testimonials"]])
+        adm = admin_session()
+        saved = adm.get(BASE + "/api/admin/testimonials").json()["testimonials"]
+        try:
+            r = post(adm, "/api/admin/testimonials", {"testimonials": [
+                {"name": "A Person", "text": "Great to work with.", "linkedin_url": "javascript:alert(1)", "letter": 1},
+                {"name": "", "text": "no name"}, {"name": "No text"}, "junk",
+                {"name": "B", "text": "Fine.", "linkedin_url": "https://www.linkedin.com/in/x/details/recommendations/"}]}).json()
+            self.assertEqual([t["name"] for t in r["testimonials"]], ["A Person", "B"])
+            self.assertEqual(r["testimonials"][0]["linkedin_url"], "")
+            self.assertTrue(r["testimonials"][0]["letter"])
+            self.assertIn("Great to work with.", rag.key_facts())          # the chatbot sees them word for word
+            post(adm, "/api/admin/config", {"testimonials_enabled": False})
+            self.assertEqual(requests.get(BASE + "/api/testimonials").json(), {"enabled": False, "testimonials": []})
+        finally:
+            post(adm, "/api/admin/testimonials", {"testimonials": saved})
+            post(adm, "/api/admin/config", {"testimonials_enabled": True})
 
     def test_github_username_and_skill_spread(self):
         self.assertEqual(github.username("https://github.com/adembenhalima1808-ui"), "adembenhalima1808-ui")

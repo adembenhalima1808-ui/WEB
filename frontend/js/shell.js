@@ -103,6 +103,30 @@ async function loadProjects(section, grid) {
   grid.replaceChildren(...list.map(projectCard));
 }
 
+// Recommendations: the strongest sentence up front, the full text one click away, and where each one can be checked.
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+function quoteCard(t, email) {
+  const paras = t.text.split(/\n\s*\n/).map(p => h('p', { text: p }));
+  const mail = email ? `mailto:${email}?subject=${encodeURIComponent('Recommendation letter from ' + t.name)}` : null;
+  return h('article', { class: 'quote' },
+    h('span', { class: 'quote-mark', 'aria-hidden': 'true', text: '\u201C' }),
+    h('blockquote', {}, h('p', { class: 'quote-lead', text: t.highlight || t.text.split(/(?<=\.)\s/)[0] })),
+    h('details', { class: 'quote-full' }, h('summary', { text: 'Read the full recommendation' }), h('div', {}, paras)),
+    h('div', { class: 'quote-who' },
+      h('span', { class: 'quote-avatar', 'aria-hidden': 'true', text: initials(t.name) }),
+      h('div', {}, h('b', { text: t.name }), h('span', { text: t.title }), h('span', { class: 'muted', text: [t.relation, t.date].filter(Boolean).join(' \u00B7 ') }))),
+    h('div', { class: 'quote-src' },
+      t.letter ? h('span', { class: 'badge', text: '\u2709 Signed letter' }) : null,
+      t.linkedin_url ? h('a', { class: 'badge', href: t.linkedin_url, target: '_blank', rel: 'noopener noreferrer', text: 'On LinkedIn \u2197' }) : null,
+      t.letter && mail ? h('a', { class: 'btn', href: mail, text: 'Request the signed letter' }) : null));
+}
+async function loadTestimonials(section, grid, email) {
+  const r = await api('/api/testimonials');
+  const list = r.ok ? r.data.testimonials || [] : [];
+  if (!list.length) { section.remove(); return; }
+  grid.replaceChildren(...list.map(t => quoteCard(t, email)));
+}
+
 function wireMenu() {
   const app = $('#app'), btn = $('#menu-btn');
   const set = open => { app.classList.toggle('open', open); btn.setAttribute('aria-expanded', String(open)); btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
@@ -170,6 +194,12 @@ export async function buildApp({ role, cfg, me }) {
     main.append(section);
     loadProjects(section, grid);
   }
+  if (cfg.testimonials_enabled !== false) {
+    const grid = h('div', { class: 'quotes', 'aria-live': 'polite' });
+    const section = h('section', { 'aria-label': 'Recommendations' }, h('h3', { text: 'What people say' }), grid, h('hr'));
+    main.append(section);
+    loadTestimonials(section, grid, cfg.email);
+  }
 
   const comm = cfg.human_comm_enabled ? createComm({ avatar: '\u{1F9D1}‍\u{1F4BB}', refresh, intro: 'Bypass the AI and send a message directly to my personal device. I will reply here if available.' }) : null;
   const labels = ['Direct Interrogation', 'Agentic Operations'].concat(comm ? ['Direct Comm-Link'] : []);
@@ -179,6 +209,7 @@ export async function buildApp({ role, cfg, me }) {
     'Welcome to the Command Center. Here is your tactical breakdown:\n\n' +
     (showSkills ? "- **The Radar Web (above):** a live view of Adem's core engineering competencies, re-weighted for your company.\n" : '') +
     (cfg.projects_enabled !== false ? "- **Projects (above):** what Adem has built, with the code on GitHub.\n" : '') +
+    (cfg.testimonials_enabled !== false ? '- **What people say (above):** recommendations from managers Adem has worked with.\n' : '') +
     "- **Direct Interrogation (here):** ask me anything about Adem's experience, projects or how he solves problems.\n" +
     '- **Agentic Operations (next tab):** feed me a job description and I will calculate a fit score, draft a cover letter or generate interview questions.\n' +
     (comm ? "- **Direct Comm-Link (3rd tab):** bypass the AI and ping Adem's phone in real time.\n" : '') +
