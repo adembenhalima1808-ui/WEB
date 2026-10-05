@@ -127,6 +127,10 @@ async function loadTestimonials(section, grid, email) {
   grid.replaceChildren(...list.map(t => quoteCard(t, email)));
 }
 
+// Section header: small label with a rule, title, one-line subtitle. Gives every block on the page the same rhythm.
+const sectionHead = (label, title, sub) => h('header', { class: 'section-head' },
+  h('span', { class: 'section-label', text: label }), h('h3', { text: title }), sub ? h('p', { text: sub }) : null);
+
 function wireMenu() {
   const app = $('#app'), btn = $('#menu-btn');
   const set = open => { app.classList.toggle('open', open); btn.setAttribute('aria-expanded', String(open)); btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); };
@@ -185,18 +189,18 @@ export async function buildApp({ role, cfg, me }) {
   const showSkills = cfg.skills_enabled !== false;
   if (showSkills) {
     const rb = h('div', { class: 'radar-wrap', 'aria-live': 'polite' }, h('p', { class: 'loading', text: 'Agent extracting core competencies from CV...' }));
-    main.append(h('h3', { text: 'Core Engineering Competencies' }), rb, h('hr'));
+    main.append(sectionHead('Skills', 'Core Engineering Competencies', me.company ? `Weighted for ${me.company}.` : null), rb);
     loadSkills(badges, rb);
-  } else main.append(h('hr'));
+  }
   if (cfg.projects_enabled !== false) {
     const grid = h('div', { class: 'projects', 'aria-live': 'polite' }, h('p', { class: 'loading', text: 'Fetching projects from GitHub...' }));
-    const section = h('section', { 'aria-label': 'Projects' }, h('h3', { text: 'Projects' }), grid, h('hr'));
+    const section = h('section', { 'aria-label': 'Projects' }, sectionHead('Work', 'Projects', 'What I built, with the code on GitHub.'), grid);
     main.append(section);
     loadProjects(section, grid);
   }
   if (cfg.testimonials_enabled !== false) {
     const grid = h('div', { class: 'quotes', 'aria-live': 'polite' });
-    const section = h('section', { 'aria-label': 'Recommendations' }, h('h3', { text: 'What people say' }), grid, h('hr'));
+    const section = h('section', { 'aria-label': 'Recommendations' }, sectionHead('References', 'What people say', "From managers I've worked with."), grid);
     main.append(section);
     loadTestimonials(section, grid, cfg.email);
   }
@@ -222,5 +226,5 @@ export async function buildApp({ role, cfg, me }) {
   tabs.panels[0].append(chat.el);
   tabs.panels[1].append(createOps({ chat }).el);
   if (comm) tabs.panels[2].append(h('h3', { text: 'Direct Comm-Link' }), comm.el);
-  main.append(tabs.list, ...tabs.panels);
+  main.append(sectionHead('Talk to the agent', 'Ask me anything', 'Answers come only from my CV and notes. You can also paste a job description.'), tabs.list, ...tabs.panels);
 }
