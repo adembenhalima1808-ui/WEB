@@ -39,13 +39,15 @@
       </div>
       <div class="bar-actions">
         <a class="btn auto" href="/api/derja/export" download>Download Excel</a>
+        <a class="btn auto" href="/api/derja/export?format=jsonl" download>Download JSONL</a>
         <button class="btn auto" id="logout" type="button">Lock</button>
       </div>
     </div>
 
     <form id="add-form" class="add" autocomplete="off">
       <label for="text">Message</label>
-      <textarea class="textarea" id="text" rows="4" maxlength="1000" required placeholder="Paste or type the customer message"></textarea>
+      <textarea class="textarea" id="text" dir="auto" rows="4" maxlength="1000" required placeholder="Paste or type the customer message, exactly as written"></textarea>
+      <p class="hint muted" id="script-hint" aria-live="polite">Ctrl+Enter saves.</p>
 
       <label for="intent">What is this message about?</label>
       <select class="field" id="intent" required></select>
@@ -57,6 +59,9 @@
       <button class="btn primary" id="add-btn" type="submit">Add to Excel</button>
       <p class="err" id="add-err" role="alert"></p>
     </form>
+
+    <h2>Examples per type</h2>
+    <ul class="counts" id="counts" aria-label="Messages saved per type"></ul>
 
     <h2 class="recent-title">Recently added</h2>
     <ul class="recent" id="recent" aria-label="Recently added messages"></ul>

@@ -134,6 +134,11 @@ class Ctx:
             return FAMILY[self.role]
         return self.company or "General Public"
 
+    @property
+    def site_role(self):
+        """The role as the public site sees it. The labelling desk session is not a site role."""
+        return None if self.role == "labeler" else self.role
+
     def login(self, role):
         vid = self.vid
         self.session.clear()                # new session identity on privilege change
@@ -233,7 +238,7 @@ def company_context(label, vid=None):
 @api(roles=None, methods=("GET",))
 def h_config(ctx, body):
     cfg = public_config()
-    cfg["role"] = ctx.role
+    cfg["role"] = ctx.site_role
     return cfg
 
 
@@ -393,7 +398,7 @@ def h_feedback(ctx, body):
 # --- direct comm-link (visitor <-> Adem over Telegram) ---
 @api(limit=10, window=60, public_maintenance=True)
 def h_comm_send(ctx, body):
-    if not load_config()["human_comm_enabled"] and ctx.role is None:
+    if not load_config()["human_comm_enabled"] and ctx.site_role is None:
         return {"error": "Comm-link is offline"}, 403
     text = clean_text(body.get("message"), 1000)
     if not text:
@@ -490,7 +495,7 @@ def h_logout(ctx, body):
 @api(roles=None, methods=("GET",))
 def h_me(ctx, body):
     cfg = load_config()
-    role = None if ctx.role == "labeler" else ctx.role      # the labelling desk is not a site role
+    role = ctx.site_role
     return {"role": role, "init": bool(role or ctx.session.get("init")), "company": ctx.company,
             "started": ctx.session.get("started", 0), "maintenance": cfg["maintenance_mode"],
             "maintenance_reason": cfg["maintenance_reason"] if cfg["maintenance_mode"] else ""}
@@ -591,8 +596,8 @@ def h_derja_login(ctx, body):
 @api(roles=("labeler",), methods=("GET",))
 def h_derja_state(ctx, body):
     rows = labeler.read_rows(settings.DERJA_XLSX)
-    options = [{"value": v, "label": label} for v, label in labeler.INTENT_OPTIONS]
-    return {"count": len(rows), "options": options, "recent": rows[-10:][::-1]}
+    return {"count": len(rows), "options": labeler.intent_options(rows), "summary": labeler.summary(rows),
+            "recent": rows[-10:][::-1]}
 
 
 @api(roles=("labeler",), limit=60, window=60)
@@ -606,12 +611,31 @@ def h_derja_add(ctx, body):
     return {"ok": True, "row": row}
 
 
+@api(roles=("labeler",), limit=30, window=60)
+def h_derja_undo(ctx, body):
+    try:
+        labeler.undo_last(settings.DERJA_XLSX, body.get("text"))
+    except labeler.LabelerError as e:
+        return {"error": str(e)}, 409
+    return {"ok": True}
+
+
+DERJA_EXPORTS = {
+    "xlsx": (labeler.export_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "messages.xlsx"),
+    "jsonl": (labeler.export_jsonl, "application/x-ndjson; charset=utf-8", "messages.jsonl"),
+}
+
+
 async def h_derja_export(request):
     if Ctx(request).role != "labeler":
         return JSONResponse({"error": "Authentication required"}, 401)
-    data = await anyio.to_thread.run_sync(labeler.export_bytes, settings.DERJA_XLSX)
-    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": 'attachment; filename="messages.xlsx"', "Cache-Control": "no-store"})
+    fmt = DERJA_EXPORTS.get(request.query_params.get("format", "xlsx"))
+    if not fmt:
+        return JSONResponse({"error": "Unknown format"}, 400)
+    build, media_type, filename = fmt
+    data = await anyio.to_thread.run_sync(build, settings.DERJA_XLSX)
+    return Response(data, media_type=media_type,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"})
 
 
 # ----------------------------------------------------------------------------- admin
@@ -936,6 +960,7 @@ routes = [
     Route("/api/derja/login", h_derja_login, methods=["POST"]),
     Route("/api/derja/state", h_derja_state, methods=["GET"]),
     Route("/api/derja/add", h_derja_add, methods=["POST"]),
+    Route("/api/derja/undo", h_derja_undo, methods=["POST"]),
     Route("/api/derja/export", h_derja_export, methods=["GET"]),
     Mount("/static", StaticFiles(directory=str(settings.FRONTEND_DIR), check_dir=False), name="static"),
 ]
