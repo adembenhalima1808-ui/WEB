@@ -63,6 +63,43 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(cell.data_type, "s")
         self.assertTrue(cell.value.startswith("="))
 
+    def test_presentation_forms_count_as_arabic(self):
+        self.assertEqual(labeler.detect_script("ﺳﻼﻡ"), "arabic")
+        self.assertEqual(labeler.detect_script("ça va"), "arabizi")
+
+    def test_invisible_characters_and_extra_spaces_are_removed(self):
+        row = labeler.add_row(self.path, "\u200fوين   الطلبية\u200b؟\n\n  merci ", "order_status")
+        self.assertEqual(row["text"], "وين الطلبية؟\nmerci")
+
+    def test_duplicates_ignore_punctuation_harakat_and_tatweel(self):
+        labeler.add_row(self.path, "وين الطلبية؟", "order_status")
+        with self.assertRaises(labeler.DuplicateError):
+            labeler.add_row(self.path, "وِين الطلـــبية !!", "order_status")
+        with self.assertRaises(labeler.DuplicateError):
+            labeler.add_row(self.path, "ﻭﻳﻦ ﺍﻟﻄﻠﺒﻴﺔ", "order_status")   # same words in presentation forms
+        labeler.add_row(self.path, "win commandti?", "order_status")
+        with self.assertRaises(labeler.DuplicateError):
+            labeler.add_row(self.path, "win commandti", "order_status")
+
+    def test_custom_types_join_the_dropdown(self):
+        labeler.add_row(self.path, "nheb nbadel el password", "account_access")
+        values = [o["value"] for o in labeler.intent_options(labeler.read_rows(self.path))]
+        self.assertEqual(values[-1], "account_access")
+        self.assertEqual(values.count("account_access"), 1)
+
+    def test_undo_removes_only_the_newest_row(self):
+        labeler.add_row(self.path, "salut", "greeting")
+        labeler.add_row(self.path, "aychek", "thanks")
+        with self.assertRaises(labeler.LabelerError):
+            labeler.undo_last(self.path, "salut")
+        labeler.undo_last(self.path, "aychek")
+        self.assertEqual([r["text"] for r in labeler.read_rows(self.path)], ["salut"])
+
+    def test_export_jsonl(self):
+        labeler.add_row(self.path, "وين وصلت طلبيتي؟", "order_status")
+        lines = labeler.export_jsonl(self.path).decode("utf-8").splitlines()
+        self.assertEqual(lines, ['{"text": "وين وصلت طلبيتي؟", "intent": "order_status", "script": "arabic"}'])
+
     def test_refuses_a_file_with_other_columns(self):
         wb = Workbook()
         wb.active.append(["message", "label"])
@@ -117,7 +154,8 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(r.json()["row"]["script"], "arabizi")   # detected automatically
         state = self.client.get("/api/derja/state").json()
         self.assertEqual(state["count"], 1)
-        self.assertEqual([o["value"] for o in state["options"]], ["order_status", "delivery_delay"])
+        self.assertEqual([o["value"] for o in state["options"]], [v for v, _ in labeler.INTENT_OPTIONS])
+        self.assertEqual(state["summary"], {"intents": {"order_status": 1}, "scripts": {"arabizi": 1}})
         self.assertEqual(state["recent"][0]["text"], "win wslet commandti?")
 
     def test_duplicate_returns_409_and_bad_input_400(self):
@@ -141,11 +179,28 @@ class EndpointTests(unittest.TestCase):
         self.assertIn("attachment", r.headers["content-disposition"])
         self.assertEqual(r.content[:2], b"PK")
 
+    def test_export_jsonl_and_unknown_format(self):
+        self.login()
+        self.client.post("/api/derja/add", json={"text": "salut ça va", "intent": "greeting"})
+        r = self.client.get("/api/derja/export?format=jsonl")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("messages.jsonl", r.headers["content-disposition"])
+        self.assertEqual(r.text, '{"text": "salut ça va", "intent": "greeting", "script": "arabizi"}\n')
+        self.assertEqual(self.client.get("/api/derja/export?format=csv").status_code, 400)
+
+    def test_undo_endpoint(self):
+        self.login()
+        self.client.post("/api/derja/add", json={"text": "salut", "intent": "greeting"})
+        self.assertEqual(self.client.post("/api/derja/undo", json={"text": "other"}).status_code, 409)
+        self.assertEqual(self.client.post("/api/derja/undo", json={"text": "salut"}).status_code, 200)
+        self.assertEqual(self.client.get("/api/derja/state").json()["count"], 0)
+
     def test_labeller_session_is_not_a_site_role(self):
         self.login()
         me = self.client.get("/api/auth/me").json()
         self.assertIsNone(me["role"])
         self.assertFalse(me["init"])
+        self.assertIsNone(self.client.get("/api/config").json()["role"])
 
     def test_logout_ends_the_desk_session(self):
         self.login()

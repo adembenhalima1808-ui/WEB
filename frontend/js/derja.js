@@ -2,6 +2,12 @@
 import { $, api, h, errText } from './util.js';
 
 const OTHER = '__other__';
+const LOW = 20;   // types with fewer saved examples than this are highlighted
+// Same rules as the server (app/labeler.py), only to show the person what will be stored.
+const ARABIC = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const LATIN = /[A-Za-zÀ-ÖØ-öø-ÿ]/;
+const SCRIPT_LABEL = { arabic: 'Arabic letters', arabizi: 'Arabizi (Latin letters)', mixed: 'Mixed Arabic and Latin' };
+let labels = {};
 const loginPanel = $('#login');
 const workspace = $('#workspace');
 
@@ -14,9 +20,32 @@ function renderRecent(rows) {
   const list = $('#recent');
   list.textContent = '';
   if (!rows.length) { list.append(h('li', { class: 'recent-empty', text: 'No messages yet.' })); return; }
-  rows.forEach(r => list.append(h('li', {},
-    h('span', { class: 'tag', text: r.intent }),
-    h('span', { class: 'msg-text', text: r.text }))));
+  rows.forEach((r, i) => list.append(h('li', {},
+    h('div', { class: 'row-head' },
+      h('span', { class: 'tag', text: `${labels[r.intent] || r.intent} · ${r.script}` }),
+      i === 0 ? h('button', { class: 'btn undo', type: 'button', text: 'Remove', onclick: () => undo(r.text) }) : null),
+    h('span', { class: 'msg-text', dir: 'auto', text: r.text }))));
+}
+
+function renderCounts(options, summary) {
+  const list = $('#counts');
+  list.textContent = '';
+  options.forEach(o => {
+    const n = summary.intents[o.value] || 0;
+    list.append(h('li', { class: n < LOW ? 'low' : '' }, h('b', { text: String(n) }), ` ${o.label}`));
+  });
+  const scripts = Object.entries(summary.scripts).map(([k, n]) => `${n} ${k}`).join(' · ');
+  if (scripts) list.append(h('li', {}, scripts));
+}
+
+function scriptOf(text) {
+  const a = ARABIC.test(text), l = LATIN.test(text);
+  return a && l ? 'mixed' : a ? 'arabic' : l ? 'arabizi' : '';
+}
+
+function updateHint() {
+  const script = scriptOf($('#text').value);
+  $('#script-hint').textContent = script ? `Detected: ${SCRIPT_LABEL[script]}. Ctrl+Enter saves.` : 'Ctrl+Enter saves.';
 }
 
 function renderOptions(options) {
@@ -42,13 +71,29 @@ async function refresh() {
   if (!r.ok) { show('login'); return false; }
   const n = r.data.count;
   $('#count').textContent = `${n} message${n === 1 ? '' : 's'} saved`;
+  labels = Object.fromEntries(r.data.options.map(o => [o.value, o.label]));
   renderOptions(r.data.options);
+  renderCounts(r.data.options, r.data.summary);
   renderRecent(r.data.recent);
   show('desk');
   return true;
 }
 
+// Removes the newest row (for a wrong type or a typo). The server checks it is still the newest one.
+async function undo(text) {
+  const err = $('#add-err');
+  err.textContent = '';
+  const r = await api('/api/derja/undo', { method: 'POST', body: { text } });
+  if (r.status === 401) { show('login'); return; }
+  if (!r.ok) err.textContent = errText(r);
+  await refresh();
+}
+
 $('#intent').addEventListener('change', toggleOther);
+$('#text').addEventListener('input', updateHint);
+$('#text').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#add-form').requestSubmit(); }
+});
 
 $('#login-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -84,6 +129,7 @@ $('#add-form').addEventListener('submit', async e => {
   if (!r.ok) { err.textContent = errText(r); return; }
   // The chosen type stays selected, so labelling a run of similar messages is quick.
   text.value = '';
+  updateHint();
   text.focus();
   await refresh();
 });
