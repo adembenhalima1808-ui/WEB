@@ -51,6 +51,12 @@ All secrets come from environment variables or `.env`, which is never committed.
 | `COOKIE_SECURE` | `1` in production (HTTPS), `0` for local http |
 | `GITHUB_TOKEN` | Optional. Only raises the GitHub API rate limit for the Projects section |
 | `TRUST_PROXY` | `1` behind Render, Fly or nginx so rate limits see real IPs |
+| `LABELER_PASSPHRASE` | Passphrase for the hidden labelling desk at `/derja` (unset = desk disabled) |
+| `DERJA_XLSX` | Excel file the desk appends to (columns `text, intent, script`). Default `DATA_DIR/messages.xlsx` |
+
+## Labelling desk (`/derja`)
+
+A hidden page for typing labelled support messages straight into an Excel file. It is not linked from the public site, and it needs `LABELER_PASSPHRASE`. Each save appends one row (`text`, `intent`, `script`), refuses duplicates, and writes atomically. Script can be left on auto-detect (Arabic letters = `arabic`, Latin = `arabizi`, both = `mixed`). The **Download Excel** button returns the current file. Point `DERJA_XLSX` at a folder synced by iCloud or OneDrive to keep a copy on your own machine. The workbook holds private messages, so it is git-ignored and must never be committed.
 
 ## How the doors work
 

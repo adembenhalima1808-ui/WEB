@@ -23,7 +23,7 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-from . import github, mistral, profile, rag, resume, security, settings, telegram, testimonials
+from . import github, labeler, mistral, profile, rag, resume, security, settings, telegram, testimonials
 from .config_store import DEFAULT_CONFIG, EDITABLE, load_config, public_config, save_config
 from .security import clean_text, limiter
 from .storage import increment_metric, read_json, read_text, update_json, write_json, write_text
@@ -490,7 +490,8 @@ def h_logout(ctx, body):
 @api(roles=None, methods=("GET",))
 def h_me(ctx, body):
     cfg = load_config()
-    return {"role": ctx.role, "init": bool(ctx.role or ctx.session.get("init")), "company": ctx.company,
+    role = None if ctx.role == "labeler" else ctx.role      # the labelling desk is not a site role
+    return {"role": role, "init": bool(role or ctx.session.get("init")), "company": ctx.company,
             "started": ctx.session.get("started", 0), "maintenance": cfg["maintenance_mode"],
             "maintenance_reason": cfg["maintenance_reason"] if cfg["maintenance_mode"] else ""}
 
@@ -571,6 +572,46 @@ def h_family_tool(ctx, body):
                        temperature=0.7, heavy=True)
     log_chat(FAMILY[ctx.role], f"[{body.get('tool')} tool] {t}", out)
     return {"output": out}
+
+
+# ----------------------------------------------------------------------------- Derja labelling desk
+# Hidden at /derja and linked from nowhere on the public site. Only the passphrase opens it.
+@api(roles=None, limit=10, window=60)
+def h_derja_login(ctx, body):
+    secret = settings.LABELER_PASSPHRASE
+    if not secret:
+        return {"error": "This page is not available."}, 403
+    time.sleep(0.4)
+    if not security.safe_equal(clean_text(body.get("passphrase"), 200), secret):
+        return {"error": "Wrong passphrase."}, 401
+    ctx.login("labeler")
+    return {"ok": True}
+
+
+@api(roles=("labeler",), methods=("GET",))
+def h_derja_state(ctx, body):
+    rows = labeler.read_rows(settings.DERJA_XLSX)
+    return {"count": len(rows), "intents": sorted({r["intent"] for r in rows if r["intent"]}),
+            "scripts": list(labeler.SCRIPTS), "recent": rows[-10:][::-1]}
+
+
+@api(roles=("labeler",), limit=60, window=60)
+def h_derja_add(ctx, body):
+    try:
+        row = labeler.add_row(settings.DERJA_XLSX, body.get("text"), body.get("intent"), body.get("script"))
+    except labeler.DuplicateError as e:
+        return {"error": str(e)}, 409
+    except labeler.LabelerError as e:
+        return {"error": str(e)}, 400
+    return {"ok": True, "row": row}
+
+
+async def h_derja_export(request):
+    if Ctx(request).role != "labeler":
+        return JSONResponse({"error": "Authentication required"}, 401)
+    data = await anyio.to_thread.run_sync(labeler.export_bytes, settings.DERJA_XLSX)
+    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": 'attachment; filename="messages.xlsx"', "Cache-Control": "no-store"})
 
 
 # ----------------------------------------------------------------------------- admin
@@ -891,6 +932,11 @@ routes = [
     Route("/api/admin/sim/turn", h_admin_sim_turn, methods=["POST"]),
     Route("/api/admin/sim/evaluate", h_admin_sim_eval, methods=["POST"]),
     Route("/api/admin/sim/apply", h_admin_sim_apply, methods=["POST"]),
+    Route("/derja", page("derja/index.html")),
+    Route("/api/derja/login", h_derja_login, methods=["POST"]),
+    Route("/api/derja/state", h_derja_state, methods=["GET"]),
+    Route("/api/derja/add", h_derja_add, methods=["POST"]),
+    Route("/api/derja/export", h_derja_export, methods=["GET"]),
     Mount("/static", StaticFiles(directory=str(settings.FRONTEND_DIR), check_dir=False), name="static"),
 ]
 
