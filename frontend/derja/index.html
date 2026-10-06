@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Labelling Desk</title>
+<meta name="theme-color" content="#0A0807">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23FF7A00' d='M3 4l8 6h10l8-6-2 14-11 10L5 18z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/derja.css">
+</head>
+<body>
+<a class="skip" href="#desk">Skip to content</a>
+<div class="atmosphere" aria-hidden="true"><div class="glow"></div><div class="ashes"></div></div>
+
+<main id="desk" class="desk" tabindex="-1">
+
+  <!-- Step 1: passphrase -->
+  <section id="login" class="panel hide" aria-labelledby="login-title">
+    <h1 id="login-title">Labelling Desk</h1>
+    <p class="muted">Enter the passphrase to add messages to the Excel file.</p>
+    <form id="login-form" autocomplete="off">
+      <label class="sr-only" for="passphrase">Passphrase</label>
+      <input class="field" id="passphrase" type="password" autocomplete="off" required maxlength="200" placeholder="Passphrase">
+      <button class="btn primary" type="submit">Enter</button>
+      <p class="err" id="login-err" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Step 2: the desk -->
+  <section id="workspace" class="panel hide" aria-labelledby="desk-title">
+    <div class="bar">
+      <div>
+        <h1 id="desk-title">Labelling Desk</h1>
+        <p class="muted" id="count" aria-live="polite"></p>
+      </div>
+      <div class="bar-actions">
+        <a class="btn auto" href="/api/derja/export" download>Download Excel</a>
+        <button class="btn auto" id="logout" type="button">Lock</button>
+      </div>
+    </div>
+
+    <form id="add-form" class="add" autocomplete="off">
+      <label for="text">Message</label>
+      <textarea class="textarea" id="text" rows="4" maxlength="1000" required placeholder="Paste or type the customer message"></textarea>
+
+      <div class="grid">
+        <div>
+          <label for="intent">Type (intent)</label>
+          <input class="field" id="intent" list="intent-list" maxlength="40" required placeholder="e.g. order_status">
+          <datalist id="intent-list"></datalist>
+        </div>
+        <div>
+          <label for="script">Script</label>
+          <select class="field" id="script">
+            <option value="auto">Auto-detect</option>
+            <option value="arabic">arabic</option>
+            <option value="arabizi">arabizi</option>
+            <option value="mixed">mixed</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn primary" id="add-btn" type="submit">Add to Excel</button>
+      <p class="err" id="add-err" role="alert"></p>
+    </form>
+
+    <h2 class="recent-title">Recently added</h2>
+    <ul class="recent" id="recent" aria-label="Recently added messages"></ul>
+  </section>
+</main>
+
+<script type="module" src="/static/js/derja.js"></script>
+</body>
+</html>

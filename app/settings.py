@@ -42,6 +42,9 @@ if not SECRET_KEY:
 ADMIN_PASSWORD = env("ADMIN_PASSWORD")      # required to enable admin login
 SARA_PASSPHRASE = env("SARA_PASSPHRASE")    # unset = Sara's area disabled
 EGI_PASSPHRASE = env("EGI_PASSPHRASE")      # unset = Egi's area disabled
+LABELER_PASSPHRASE = env("LABELER_PASSPHRASE")  # unset = the hidden /derja labelling desk is disabled
+# Excel file the labelling desk appends to (columns: text, intent, script). Default: DATA_DIR/messages.xlsx.
+DERJA_XLSX = Path(env("DERJA_XLSX")).expanduser() if env("DERJA_XLSX") else DATA_DIR / "messages.xlsx"
 
 # Words typed into the public company box that open a private door (the door still needs a secret).
 SARA_TRIGGER = env("SARA_TRIGGER", "wife").lower()
