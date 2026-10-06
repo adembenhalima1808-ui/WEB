@@ -47,21 +47,11 @@
       <label for="text">Message</label>
       <textarea class="textarea" id="text" rows="4" maxlength="1000" required placeholder="Paste or type the customer message"></textarea>
 
-      <div class="grid">
-        <div>
-          <label for="intent">Type (intent)</label>
-          <input class="field" id="intent" list="intent-list" maxlength="40" required placeholder="e.g. order_status">
-          <datalist id="intent-list"></datalist>
-        </div>
-        <div>
-          <label for="script">Script</label>
-          <select class="field" id="script">
-            <option value="auto">Auto-detect</option>
-            <option value="arabic">arabic</option>
-            <option value="arabizi">arabizi</option>
-            <option value="mixed">mixed</option>
-          </select>
-        </div>
+      <label for="intent">What is this message about?</label>
+      <select class="field" id="intent" required></select>
+      <div id="other-box" class="hide">
+        <label for="intent-other">Type a short name for it</label>
+        <input class="field" id="intent-other" maxlength="40" placeholder="e.g. refund_request">
       </div>
 
       <button class="btn primary" id="add-btn" type="submit">Add to Excel</button>

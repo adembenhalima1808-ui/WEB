@@ -591,14 +591,14 @@ def h_derja_login(ctx, body):
 @api(roles=("labeler",), methods=("GET",))
 def h_derja_state(ctx, body):
     rows = labeler.read_rows(settings.DERJA_XLSX)
-    return {"count": len(rows), "intents": sorted({r["intent"] for r in rows if r["intent"]}),
-            "scripts": list(labeler.SCRIPTS), "recent": rows[-10:][::-1]}
+    options = [{"value": v, "label": label} for v, label in labeler.INTENT_OPTIONS]
+    return {"count": len(rows), "options": options, "recent": rows[-10:][::-1]}
 
 
 @api(roles=("labeler",), limit=60, window=60)
 def h_derja_add(ctx, body):
     try:
-        row = labeler.add_row(settings.DERJA_XLSX, body.get("text"), body.get("intent"), body.get("script"))
+        row = labeler.add_row(settings.DERJA_XLSX, body.get("text"), body.get("intent"))
     except labeler.DuplicateError as e:
         return {"error": str(e)}, 409
     except labeler.LabelerError as e:

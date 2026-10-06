@@ -15,6 +15,11 @@ from .security import clean_text
 
 COLUMNS = ("text", "intent", "script")
 SCRIPTS = ("arabic", "arabizi", "mixed")
+# Dropdown choices shown on the desk: (stored value, label for the person typing).
+INTENT_OPTIONS = (
+    ("order_status", "Where is my order?"),
+    ("delivery_delay", "My delivery is late"),
+)
 INTENT_RE = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
 ARABIC_RE = re.compile(r"[؀-ۿ]")
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -96,8 +101,8 @@ def export_bytes(path):
         return Path(path).read_bytes()
 
 
-def add_row(path, text, intent, script):
-    """Validate one labelled message and append it. Returns the stored row."""
+def add_row(path, text, intent):
+    """Validate one labelled message and append it. The script is always detected from the text."""
     msg = clean_text(text, 1000)
     if len(msg) < 2:
         raise LabelerError("Write the message first.")
@@ -106,13 +111,9 @@ def add_row(path, text, intent, script):
 
     label = normalize_intent(intent)
     if not label:
-        raise LabelerError("Intent must be 2 to 40 letters, digits or underscores, e.g. order_status.")
+        raise LabelerError("Choose a type from the list, or pick Other and type a short name.")
 
-    script_value = str(script or "").strip().lower()
-    if script_value in ("", "auto"):
-        script_value = detect_script(msg)
-    elif script_value not in SCRIPTS:
-        raise LabelerError("Script must be arabic, arabizi or mixed.")
+    script_value = detect_script(msg)
 
     key = _dedupe_key(msg)
     with _lock:

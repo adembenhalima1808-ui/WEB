@@ -38,7 +38,7 @@ class StoreTests(unittest.TestCase):
         self.assertIsNone(labeler.normalize_intent("drop;table"))
 
     def test_add_row_creates_header_and_appends(self):
-        row = labeler.add_row(self.path, "وين وصلت طلبيتي؟", "order_status", "auto")
+        row = labeler.add_row(self.path, "وين وصلت طلبيتي؟", "order_status")
         self.assertEqual(row, {"text": "وين وصلت طلبيتي؟", "intent": "order_status", "script": "arabic"})
         ws = load_workbook(self.path).worksheets[0]
         self.assertEqual([c.value for c in ws[1]], ["text", "intent", "script"])
@@ -46,21 +46,19 @@ class StoreTests(unittest.TestCase):
 
     def test_rejects_bad_input(self):
         with self.assertRaises(labeler.LabelerError):
-            labeler.add_row(self.path, " ", "order_status", "auto")
+            labeler.add_row(self.path, " ", "order_status")
         with self.assertRaises(labeler.LabelerError):
-            labeler.add_row(self.path, "123 456", "order_status", "auto")
+            labeler.add_row(self.path, "123 456", "order_status")
         with self.assertRaises(labeler.LabelerError):
-            labeler.add_row(self.path, "salut", "!!", "auto")
-        with self.assertRaises(labeler.LabelerError):
-            labeler.add_row(self.path, "salut", "greeting", "klingon")
+            labeler.add_row(self.path, "salut", "!!")
 
     def test_duplicates_ignore_case_and_spacing(self):
-        labeler.add_row(self.path, "Win commandti?", "order_status", "auto")
+        labeler.add_row(self.path, "Win commandti?", "order_status")
         with self.assertRaises(labeler.DuplicateError):
-            labeler.add_row(self.path, "  win   COMMANDTI? ", "order_status", "auto")
+            labeler.add_row(self.path, "  win   COMMANDTI? ", "order_status")
 
     def test_formula_looking_text_is_stored_as_text(self):
-        labeler.add_row(self.path, "=HYPERLINK(\"http://x\",\"hi\")", "greeting", "arabizi")
+        labeler.add_row(self.path, "=HYPERLINK(\"http://x\",\"hi\")", "greeting")
         cell = load_workbook(self.path).worksheets[0]["A2"]
         self.assertEqual(cell.data_type, "s")
         self.assertTrue(cell.value.startswith("="))
@@ -73,7 +71,7 @@ class StoreTests(unittest.TestCase):
             labeler.read_rows(self.path)
 
     def test_export_returns_a_workbook(self):
-        labeler.add_row(self.path, "salut ça va", "greeting", "arabizi")
+        labeler.add_row(self.path, "salut ça va", "greeting")
         data = labeler.export_bytes(self.path)
         self.assertEqual(data[:2], b"PK")          # xlsx files are zip archives
         self.assertEqual(len(labeler.read_rows(self.path)), 1)
@@ -114,17 +112,17 @@ class EndpointTests(unittest.TestCase):
 
     def test_add_and_state_after_login(self):
         self.assertEqual(self.login().status_code, 200)
-        r = self.client.post("/api/derja/add", json={"text": "win wslet commandti?", "intent": "order_status", "script": "auto"})
+        r = self.client.post("/api/derja/add", json={"text": "win wslet commandti?", "intent": "order_status", })
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()["row"]["script"], "arabizi")
+        self.assertEqual(r.json()["row"]["script"], "arabizi")   # detected automatically
         state = self.client.get("/api/derja/state").json()
         self.assertEqual(state["count"], 1)
-        self.assertEqual(state["intents"], ["order_status"])
+        self.assertEqual([o["value"] for o in state["options"]], ["order_status", "delivery_delay"])
         self.assertEqual(state["recent"][0]["text"], "win wslet commandti?")
 
     def test_duplicate_returns_409_and_bad_input_400(self):
         self.login()
-        body = {"text": "salut ça va", "intent": "greeting", "script": "arabizi"}
+        body = {"text": "salut ça va", "intent": "greeting"}
         self.assertEqual(self.client.post("/api/derja/add", json=body).status_code, 200)
         self.assertEqual(self.client.post("/api/derja/add", json=body).status_code, 409)
         bad = dict(body, intent="!!")
@@ -137,7 +135,7 @@ class EndpointTests(unittest.TestCase):
 
     def test_export_downloads_the_workbook(self):
         self.login()
-        self.client.post("/api/derja/add", json={"text": "salut ça va", "intent": "greeting", "script": "arabizi"})
+        self.client.post("/api/derja/add", json={"text": "salut ça va", "intent": "greeting"})
         r = self.client.get("/api/derja/export")
         self.assertEqual(r.status_code, 200)
         self.assertIn("attachment", r.headers["content-disposition"])
