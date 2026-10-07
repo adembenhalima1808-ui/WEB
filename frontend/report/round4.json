@@ -1,0 +1,61 @@
+{
+  "date": "7 October 2026",
+  "title": "The gate had no way out, and the test suite lied about why it failed",
+  "lede": "This round started as a plain design review — judge the site the way a recruiter actually would — and turned up two different kinds of problem: one in the gate screen itself, and two in the test suite that's supposed to catch exactly this sort of thing. I fixed all three, then proved each fix with a check that would have failed before it, not just a check that passes now.",
+  "meta": ["UI review + code review + local server", "Verified with: a direct fault-injection check, the full 48-test suite, a manual Chrome walkthrough on both localhost and the live site"],
+  "tiles": [
+    ["1", "Gate UX fix shipped", "a skip link that needed no company name"],
+    ["2", "Real test bugs fixed", "a state leak and a fragile startup check"],
+    ["48/48", "Full test suite passing", "verified clean, then verified the new failure path on purpose"],
+    ["0", "Bugs found on the live site", "images, console and network all came back clean"]
+  ],
+  "findings": [
+    {
+      "status": "fixed",
+      "title": "A recruiter who didn't want to play along could never reach the CV",
+      "trigger": "Walking through the site cold, the way a recruiter skimming 200 applications would",
+      "before": "The only way past the gate was typing a company name and waiting through the boot animation — nothing, not even the CV download, was reachable before that",
+      "after": "A quiet \"Skip — just show me the CV\" link next to the existing report link submits an empty visitor name through the same /api/gate path the form already used, landing straight on the dashboard with Download Full CV visible",
+      "cause": "The gate was designed around the chatbot persona first and the plain-CV path was never added as a fallback",
+      "fix": "Refactored the form's submit handler into a shared enterWith() function and called it from both the form and the new skip link, so the skip path gets identical session handling, error handling and boot sequence — no second code path to drift out of sync"
+    },
+    {
+      "status": "fixed",
+      "title": "One test silently poisoned every test that ran after it",
+      "trigger": "Re-reading tests/test_app.py cold, checking every test that mutates shared state for a matching restore",
+      "before": "test_config_put_validation set the site title to a throwaway value and never restored it — no try/finally, unlike test_maintenance_mode right next to it, which does restore its state",
+      "after": "The mutation and all its assertions are now wrapped in try/finally, so the real title is restored even if an assertion in between fails",
+      "cause": "The test was written by copying the request/assert pattern from elsewhere in the file, but not the teardown pattern",
+      "fix": "Wrapped the body in try/finally, matching the pattern test_maintenance_mode already used a few tests earlier in the same file"
+    },
+    {
+      "status": "fixed",
+      "title": "A stuck process produced 28 confusing failures instead of one clear one",
+      "trigger": "This is the exact failure I hit two sessions ago: a day-old orphaned server from an earlier debugging session was still holding port 8765, and the whole suite failed with opaque connection errors",
+      "before": "The startup loop retried for 10 seconds and then silently fell through with no assertion — every test afterward failed with its own ConnectionError, none of them pointing at the real cause",
+      "after": "The loop now raises one clear RuntimeError naming the port and suggesting `lsof -i :8765` if the server never comes up",
+      "cause": "The loop was written to retry, but nobody added the \"and if it never works, say so clearly\" case",
+      "fix": "Added a flag set only on a successful request inside the loop, and one explicit raise after it if that flag was never set — proved it by occupying port 8765 on purpose and confirming the new message fires instead of the old pile of ConnectionErrors"
+    }
+  ],
+  "strengths": [
+    {"title": "The responsive CSS and the self-test page held up under a second, cold look", "body": "Re-checking the CSS without the context of having written it, the mobile breakpoint, touch-target sizing and prefers-reduced-motion handling all still held up fine."},
+    {"title": "The live site matched the local one, Round 3's Projects fix included", "body": "Network inspection of www.adem.ben-halima.com showed every request — including both project cover images — returning 200. An earlier screenshot that looked like broken images was a timing artifact of screenshotting before the images decoded, not a real bug."}
+  ],
+  "checks": [
+    {"name": "Gate skip link, manual check in Chrome", "result": "pass", "detail": "lands on the dashboard with no company typed; Download Full CV is visible immediately; confirmed with a hard reload after a stale browser cache initially hid the change"},
+    {"name": "Full unit test suite (48 tests)", "result": "pass", "detail": "clean run, 12.5s, no failures"},
+    {"name": "Fault-injection check: port 8765 pre-occupied on purpose", "result": "pass", "detail": "produces exactly one RuntimeError naming the port, instead of the 28 opaque ConnectionErrors this failure mode used to cause"},
+    {"name": "Live site (www.adem.ben-halima.com), manual check", "result": "pass", "detail": "console clean, all 20 network requests 200 including both project images; gate is skipped on this browser because a session cookie from an earlier visit already exists — expected, not a bug"}
+  ],
+  "also": [
+    "Read tests/test_app.py cold, the way someone unfamiliar with it would, checking every state-mutating test for a matching teardown — that's what caught the state leak above."
+  ],
+  "method": [
+    "Reviewed the live gate flow as a recruiter would experience it, cold, before looking at any code.",
+    "Re-read the test file cold, checking every state-mutating test for a matching restore, the same discipline test_maintenance_mode already followed.",
+    "Fixed the gate, the state leak, and the fragile startup check; wrote a fault-injection check that occupies the test server's port on purpose, to prove the new error path actually fires rather than just assuming it would.",
+    "Ran the full suite clean, then re-ran it with the port blocked to confirm both the before and after behaviour.",
+    "Checked the live production site's network requests and console directly rather than trusting a screenshot that looked wrong."
+  ]
+}

@@ -22,6 +22,7 @@
       <button class="round-tab" role="tab" id="tab-1" aria-controls="round-1" aria-selected="true" type="button"><b>Round 1</b><span>Automated benchmark · 4 Oct 2026</span></button>
       <button class="round-tab" role="tab" id="tab-2" aria-controls="round-2" aria-selected="false" tabindex="-1" type="button"><b>Round 2</b><span>Recruiter test, live site · 5 Oct 2026</span></button>
       <button class="round-tab" role="tab" id="tab-3" aria-controls="round-3" aria-selected="false" tabindex="-1" type="button"><b>Round 3</b><span>Projects tab fix · 7 Oct 2026</span></button>
+      <button class="round-tab" role="tab" id="tab-4" aria-controls="round-4" aria-selected="false" tabindex="-1" type="button"><b>Round 4</b><span>Gate UX + test bugs · 7 Oct 2026</span></button>
     </div>
   </header>
 
@@ -143,6 +144,38 @@
     <div class="two">
       <div class="card"><h3>Presentation</h3><ul class="plain" id="r3Also"></ul></div>
       <div class="card"><h3>How I ran round 3</h3><ul class="plain" id="r3Method"></ul></div>
+    </div>
+  </section>
+  </div>
+
+  <div class="panel" role="tabpanel" id="round-4" aria-labelledby="tab-4" hidden>
+  <section aria-labelledby="h-r4">
+    <span class="eyebrow" id="r4Date"></span>
+    <h2 id="h-r4"></h2>
+    <p class="muted" id="r4Lede"></p>
+    <div class="meta-row" id="r4Meta"></div>
+    <div class="tiles wide" id="r4Tiles"></div>
+  </section>
+
+  <section aria-labelledby="h-r4-found">
+    <h2 id="h-r4-found">What I found and fixed</h2>
+    <p class="muted">For each problem: what led me to it, the behaviour before and after, why it happened, and what I changed.</p>
+    <div class="findings" id="r4Findings"></div>
+    <h3 class="gap-top">What already worked</h3>
+    <div class="findings" id="r4Strengths"></div>
+  </section>
+
+  <section aria-labelledby="h-r4-check">
+    <h2 id="h-r4-check">How I checked it</h2>
+    <p class="muted">Each fix got a check that would have failed before it, not just one that passes now.</p>
+    <div class="tablewrap"><table><thead><tr><th>Check</th><th>Result</th><th>Detail</th></tr></thead><tbody id="r4Checks"></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="h-r4-also">
+    <h2 id="h-r4-also">Also worth knowing</h2>
+    <div class="two">
+      <div class="card"><h3>Notes</h3><ul class="plain" id="r4Also"></ul></div>
+      <div class="card"><h3>How I ran round 4</h3><ul class="plain" id="r4Method"></ul></div>
     </div>
   </section>
   </div>
