@@ -23,7 +23,7 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-from . import github, labeler, mistral, profile, rag, resume, security, settings, telegram, testimonials
+from . import gallery, github, labeler, mistral, profile, quotes, rag, resume, security, settings, telegram, testimonials
 from .config_store import DEFAULT_CONFIG, EDITABLE, load_config, public_config, save_config
 from .security import clean_text, limiter
 from .storage import increment_metric, read_json, read_text, update_json, write_json, write_text
@@ -514,6 +514,8 @@ def h_family_state(ctx, body):
         ui.pop(k, None)
     if ctx.role == "sara":
         ui["history"] = sara_history()
+        ui["photos"] = gallery.current()
+        ui["quotes"] = quotes.current()
         ui["greeting"] = ("{g}, Sara.\n\nWelcome back to your private access level. Ask me anything, tell me if "
                           "Adem's being annoying, or just say hi. What's on your mind?")
     else:
@@ -720,6 +722,73 @@ def h_admin_projects_put(ctx, body):
     cfg["projects_cards"] = cards
     save_config(cfg)
     return {"ok": True, "cards": cards}
+
+
+@api(roles=("admin",), methods=("GET",))
+def h_admin_sara_photos_get(ctx, body):
+    return {"photos": gallery.current()}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_sara_photos_put(ctx, body):
+    return {"ok": True, "photos": gallery.save(body.get("photos"))}
+
+
+@api(roles=("admin",), limit=10, window=300)
+def h_admin_sara_photo_upload(ctx, body):
+    import base64
+    try:
+        raw = base64.b64decode(str(body.get("image_b64", "")), validate=True)
+    except Exception:
+        return {"error": "Invalid upload"}, 400
+    try:
+        photo_id = gallery.save_upload(raw)
+    except ValueError as e:
+        return {"error": str(e)}, 422
+    return {"ok": True, "id": photo_id}
+
+
+@api(roles=("admin",), methods=("GET",))
+def h_admin_sara_quotes_get(ctx, body):
+    return {"quotes": quotes.current()}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_sara_quotes_put(ctx, body):
+    cfg = load_config()
+    cfg["sara_quotes"] = quotes.clean(body.get("quotes"))
+    save_config(cfg)
+    return {"ok": True, "quotes": cfg["sara_quotes"]}
+
+
+@api(roles=("sara",), limit=10, window=300)
+def h_private1_photo_add(ctx, body):
+    """Sara adding her own picture to the timeline, no owner-console trip needed."""
+    import base64
+    try:
+        raw = base64.b64decode(str(body.get("image_b64", "")), validate=True)
+    except Exception:
+        return {"error": "Invalid upload"}, 400
+    try:
+        photo_id = gallery.save_upload(raw)
+    except ValueError as e:
+        return {"error": str(e)}, 422
+    entry = {"id": photo_id, "caption": clean_text(body.get("caption"), 400), "date": clean_text(body.get("date"), 40)}
+    photos = gallery.save(gallery.current() + [entry])
+    return {"ok": True, "photos": photos}
+
+
+async def h_sara_photo(request):
+    """Serve a stored photo. Gated to Sara and the owner, same as every other private endpoint."""
+    ctx = Ctx(request)
+    if ctx.role not in ("sara", "admin"):
+        return JSONResponse({"error": "Forbidden"}, 403)
+    if not limiter.allow(f"sara-photo:{ctx.ip}", 120, 60):
+        return JSONResponse({"error": "Too many requests, slow down."}, 429)
+    p = gallery.photo_path(request.path_params.get("photo_id", ""))
+    if not p:
+        return JSONResponse({"error": "Not found"}, 404)
+    return FileResponse(p, headers={"Cache-Control": "private, max-age=86400"})
 
 
 @api(roles=("admin",), limit=10, window=60)
@@ -941,6 +1010,13 @@ routes = [
     Route("/api/admin/testimonials", h_admin_testimonials_put, methods=["POST"]),
     Route("/api/admin/projects", h_admin_projects_get, methods=["GET"]),
     Route("/api/admin/projects", h_admin_projects_put, methods=["POST"]),
+    Route("/api/admin/private1/photos", h_admin_sara_photos_get, methods=["GET"]),
+    Route("/api/admin/private1/photos", h_admin_sara_photos_put, methods=["POST"]),
+    Route("/api/admin/private1/photos/upload", h_admin_sara_photo_upload, methods=["POST"]),
+    Route("/api/admin/private1/quotes", h_admin_sara_quotes_get, methods=["GET"]),
+    Route("/api/admin/private1/quotes", h_admin_sara_quotes_put, methods=["POST"]),
+    Route("/api/private1/photo/{photo_id}", h_sara_photo, methods=["GET"]),
+    Route("/api/private1/photos", h_private1_photo_add, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),
     Route("/api/admin/telegram/clear", h_admin_tg_clear, methods=["POST"]),
     Route("/api/admin/brain", h_admin_brain_get, methods=["GET"]),

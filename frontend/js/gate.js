@@ -60,17 +60,17 @@ export function createGate({ onEnter }) {
 
   // ---- 3. private-door riddle (all wording comes from the server)
   function showChallenge(c) {
+    document.body.classList.add('theme-' + c.theme);
     const err = h('p', { class: 'err', role: 'alert' });
     const input = h('input', { class: 'field', type: 'password', maxlength: '120', 'aria-label': 'Your answer', placeholder: 'Your answer', autocomplete: 'off' });
     const ok = h('button', { class: 'btn primary', type: 'submit', text: c.button });
-    const cancel = h('button', { class: 'btn', type: 'button', text: c.cancel, onclick: () => showStart() });
+    const cancel = h('button', { class: 'btn', type: 'button', text: c.cancel, onclick: () => { document.body.classList.remove('theme-' + c.theme); showStart(); } });
     screen(reactor(c.icon, c.theme === 'a' ? 'heart' : 'devil'), h('h2', { class: 'glow-accent', text: c.title }),
       h('p', { class: 'muted' }, c.prompt, h('br'), h('small', {}, h('i', { text: c.hint }))),
       form([input], [ok, cancel], async () => {
         const r = await api('/api/auth/family', { method: 'POST', body: { answer: input.value } });
         input.value = '';
         if (!r.ok) { err.textContent = errText(r); return; }
-        document.body.classList.add('theme-' + r.data.theme);
         const line = h('p', { class: 'fade-in muted', text: r.data.lines[0] });
         screen(reactor(r.data.icon, r.data.theme === 'a' ? 'heart' : 'devil'), h('h2', { class: 'fade-in glow-accent', text: r.data.title }), line);
         await sleep(1200); line.textContent = r.data.lines[1]; line.className = 'glow-accent'; await sleep(2000);

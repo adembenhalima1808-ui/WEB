@@ -5,6 +5,7 @@ import { makeTabs } from './tabs.js';
 import { createChat, createComm, createOps, createTools } from './chat.js';
 import { buildAdmin } from './admin.js';
 import { projectCard } from './project-card.js';
+import { renderTimeline, renderQuoteMarquee } from './timeline.js';
 
 // How many project cards the homepage shows before linking out to /projects,
 // so the page stays short no matter how many projects get added later.
@@ -49,22 +50,26 @@ function sidebar({ kind, cfg, ui }) {
     aside.append(h('hr'), h('h3', { text: 'My Skills' }));
     badges = h('div', { class: 'badges', 'aria-live': 'polite' }, h('span', { class: 'badge', text: 'Loading...' })); aside.append(badges);
   }
-  aside.append(h('hr'));
-  const socials = h('div', { class: 'socials' });
-  if (cfg.linkedin_url) socials.append(h('a', { class: 'social', href: cfg.linkedin_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'LinkedIn', title: 'LinkedIn' }, icon(ICONS.linkedin)));
-  if (cfg.github_url) socials.append(h('a', { class: 'social', href: cfg.github_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'GitHub', title: 'GitHub' }, icon(ICONS.github)));
-  if (cfg.email) socials.append(h('a', { class: 'social', href: 'mailto:' + cfg.email, 'aria-label': 'Email ' + cfg.email, title: cfg.email }, icon(ICONS.email)));
-  aside.append(socials, h('hr'));
+  if (kind !== 'private') {
+    aside.append(h('hr'));
+    const socials = h('div', { class: 'socials' });
+    if (cfg.linkedin_url) socials.append(h('a', { class: 'social', href: cfg.linkedin_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'LinkedIn', title: 'LinkedIn' }, icon(ICONS.linkedin)));
+    if (cfg.github_url) socials.append(h('a', { class: 'social', href: cfg.github_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'GitHub', title: 'GitHub' }, icon(ICONS.github)));
+    if (cfg.email) socials.append(h('a', { class: 'social', href: 'mailto:' + cfg.email, 'aria-label': 'Email ' + cfg.email, title: cfg.email }, icon(ICONS.email)));
+    aside.append(socials, h('hr'));
 
-  const fbText = h('textarea', { class: 'textarea', rows: '4', maxlength: '1000', 'aria-label': 'Suggestions, bugs, or thoughts?', placeholder: 'Suggestions, bugs, or thoughts?' });
-  const fbMsg = h('p', { class: 'err', role: 'status' });
-  const fb = h('form', {}, fbText, h('button', { class: 'btn', type: 'submit', text: 'Send Anonymously' }), fbMsg);
-  fb.addEventListener('submit', async e => {
-    e.preventDefault(); if (!fbText.value.trim()) return;
-    const r = await api('/api/feedback', { method: 'POST', body: { text: fbText.value } });
-    fbMsg.className = r.ok ? 'err ok' : 'err'; fbMsg.textContent = r.ok ? 'Feedback sent!' : errText(r); if (r.ok) fbText.value = '';
-  });
-  aside.append(h('details', {}, h('summary', { text: 'Leave Feedback' }), fb));
+    const fbText = h('textarea', { class: 'textarea', rows: '4', maxlength: '1000', 'aria-label': 'Suggestions, bugs, or thoughts?', placeholder: 'Suggestions, bugs, or thoughts?' });
+    const fbMsg = h('p', { class: 'err', role: 'status' });
+    const fb = h('form', {}, fbText, h('button', { class: 'btn', type: 'submit', text: 'Send Anonymously' }), fbMsg);
+    fb.addEventListener('submit', async e => {
+      e.preventDefault(); if (!fbText.value.trim()) return;
+      const r = await api('/api/feedback', { method: 'POST', body: { text: fbText.value } });
+      fbMsg.className = r.ok ? 'err ok' : 'err'; fbMsg.textContent = r.ok ? 'Feedback sent!' : errText(r); if (r.ok) fbText.value = '';
+    });
+    aside.append(h('details', {}, h('summary', { text: 'Leave Feedback' }), fb));
+  } else {
+    aside.append(h('hr'));
+  }
   aside.append(h('button', { class: 'btn', type: 'button', text: 'Terminate Connection', onclick: async () => { await api('/api/end', { method: 'POST' }); location.reload(); } }));
   return badges;
 }
@@ -153,10 +158,16 @@ export async function buildApp({ role, cfg, me }) {
     if (!r.ok) { location.reload(); return; }
     const ui = r.data; document.title = ui.title; document.body.classList.add('theme-' + ui.theme);
     sidebar({ kind: 'private', cfg, ui });
-    main.append(h('h1', { text: ui.title }), h('p', { class: 'meta' }, h('b', { text: 'Role:' }), ` ${ui.role_line} | `, h('b', { text: 'Location:' }), ` ${ui.location}`), h('p', { text: ui.intro }),
-      h('h3', { text: ui.radar_title }));
-    const rb = h('div', { class: 'radar-wrap' }); main.append(rb, h('hr'));
-    drawRadar(rb, ui.radar.categories, ui.radar.scores);
+    main.append(h('h1', { text: ui.title }), h('p', { class: 'meta' }, h('b', { text: 'Role:' }), ` ${ui.role_line} | `, h('b', { text: 'Location:' }), ` ${ui.location}`), h('p', { text: ui.intro }));
+    if ('photos' in ui) {
+      if (ui.quotes && ui.quotes.length) { const qb = h('div'); main.append(qb, h('hr')); renderQuoteMarquee(qb, ui.quotes); }
+      main.append(h('h3', { text: 'Our Timeline' }));
+      const tb = h('div'); main.append(tb, h('hr')); renderTimeline(tb, ui.photos || []);
+    } else {
+      main.append(h('h3', { text: ui.radar_title }));
+      const rb = h('div', { class: 'radar-wrap' }); main.append(rb, h('hr'));
+      drawRadar(rb, ui.radar.categories, ui.radar.scores);
+    }
     const comm = cfg.human_comm_enabled ? createComm({ avatar: ui.avatars[0], refresh }) : null;
     const labels = comm ? ui.tabs : ui.tabs.slice(0, 2);
     const tabs = makeTabs(labels, { onChange: i => { if (comm) (i === 2 ? comm.start() : comm.stop()); } });

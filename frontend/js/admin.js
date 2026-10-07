@@ -6,8 +6,8 @@ const guard = r => { if (r.status === 401 || r.status === 403) { toast('Session 
 const msg = (box, r, okText) => { box.className = r.ok ? 'err ok' : 'err'; box.textContent = r.ok ? okText : errText(r); };
 
 export function buildAdmin() {
-  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Recommendations', 'Vector Brain Injection']);
-  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); testimonialsPanel(tabs.panels[6]); brain(tabs.panels[7]);
+  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Recommendations', 'Private Area 1', 'Private Area 2', 'Vector Brain Injection']);
+  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); testimonialsPanel(tabs.panels[6]); private1Panel(tabs.panels[7]); private2Panel(tabs.panels[8]); brain(tabs.panels[9]);
   return h('div', {}, tabs.list, ...tabs.panels);
 }
 
@@ -91,8 +91,7 @@ const FIELDS = [
   ['testimonials_enabled', 'Show the "What people say" recommendations section', 'bool'],
   ['projects_repos', 'Fallback when the Projects tab has no cards: your repos to list, comma-separated (empty = 6 most recent)', 'area'],
   ['skills_stack', 'Skill badges (comma-separated)', 'area'], ['skills_radar', 'Radar skills, one "Name: score 0-100" per line (3-10 lines)', 'area'],
-  ['persona_prompt', 'Master Persona Prompt', 'area'], ['private1_persona_prompt', 'Private area 1 persona prompt', 'area'],
-  ['private2_persona_prompt', 'Private area 2 persona prompt', 'area'], ['maintenance_mode', 'Enable Maintenance Mode (locks out everyone but you)', 'bool'],
+  ['persona_prompt', 'Master Persona Prompt', 'area'], ['maintenance_mode', 'Enable Maintenance Mode (locks out everyone but you)', 'bool'],
   ['maintenance_reason', 'Maintenance Notice Message', 'area'],
 ];
 function cms(root) {
@@ -114,8 +113,92 @@ function cms(root) {
     const r = await api('/api/admin/config', { method: 'POST', body }); if (guard(r)) msg(out, r, 'Saved. Invalid values (bad colour, non-https link, bad email) are ignored.');
   } }), out, h('hr'));
   root.append(h('p', { class: 'hint', text: 'To replace the CV or let the AI rewrite this text from it, use the Profile Sync tab.' }), h('hr'), h('div', { class: 'row' },
-    h('button', { class: 'btn', type: 'button', text: 'Force Clear Neural Cache', onclick: async () => { const r = await api('/api/admin/clear-cache', { method: 'POST' }); if (guard(r)) toast(r.ok ? 'Application memory cache cleared.' : errText(r)); } }),
-    h('button', { class: 'btn danger', type: 'button', text: 'Wipe private chat history', onclick: async () => { if (!confirm('Permanently erase the private chat history?')) return; const r = await api('/api/admin/wipe-history', { method: 'POST' }); if (guard(r)) toast(r.ok ? 'History wiped.' : errText(r)); } })));
+    h('button', { class: 'btn', type: 'button', text: 'Force Clear Neural Cache', onclick: async () => { const r = await api('/api/admin/clear-cache', { method: 'POST' }); if (guard(r)) toast(r.ok ? 'Application memory cache cleared.' : errText(r)); } })));
+}
+
+// One persona-prompt field, saved through the same /api/admin/config endpoint as CMS & Identity (partial updates only touch the key sent).
+function personaField(root, key, label) {
+  const area = h('textarea', { class: 'textarea', rows: '10', 'aria-label': label });
+  const out = h('p', { class: 'err', role: 'status' });
+  api('/api/admin/config').then(r => { if (guard(r) && r.ok) area.value = r.data[key] || ''; });
+  root.append(h('h4', { text: label }), area,
+    h('button', { class: 'btn primary', type: 'button', text: 'Save persona prompt', onclick: async () => {
+      const r = await api('/api/admin/config', { method: 'POST', body: { [key]: area.value } }); if (guard(r)) msg(out, r, 'Saved.');
+    } }), out, h('hr'));
+}
+
+function private1Panel(root) {
+  personaField(root, 'private1_persona_prompt', 'Private Area 1 persona prompt');
+  root.append(h('button', { class: 'btn danger', type: 'button', text: 'Wipe private chat history', onclick: async () => {
+    if (!confirm('Permanently erase the private chat history?')) return;
+    const r = await api('/api/admin/wipe-history', { method: 'POST' }); if (guard(r)) toast(r.ok ? 'History wiped.' : errText(r));
+  } }), h('hr'));
+
+  // ---- quotes: things Adem said, each stamped with when
+  const qList = h('div', { class: 'drafts' }), qOut = h('p', { class: 'err', role: 'status' });
+  function qBox(q) {
+    const text = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'text', 'aria-label': 'Quote text' }); text.value = q.text || '';
+    const date = h('input', { class: 'field', 'data-k': 'date', placeholder: 'DD/MM', maxlength: '10', 'aria-label': 'Date' }); date.value = q.date || '';
+    const time = h('input', { class: 'field', 'data-k': 'time', placeholder: 'HH:MM', maxlength: '10', 'aria-label': 'Time' }); time.value = q.time || '';
+    const b = h('div', { class: 'draft' },
+      h('div', { class: 'cfg' }, h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Quote' }), text),
+        h('div', {}, h('label', { class: 'lbl', text: 'Date' }), date), h('div', {}, h('label', { class: 'lbl', text: 'Time' }), time)),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', type: 'button', text: '↑ Up', onclick: () => { const s = b.previousElementSibling; if (s) s.before(b); } }),
+        h('button', { class: 'btn', type: 'button', text: '↓ Down', onclick: () => { const s = b.nextElementSibling; if (s) s.after(b); } }),
+        h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => b.remove() })));
+    return b;
+  }
+  const readQ = b => { const o = {}; b.querySelectorAll('[data-k]').forEach(el => { o[el.dataset.k] = el.value.trim(); }); return o; };
+  const qSummary = h('span', { text: 'See all quotes to edit' });
+  const renderQ = items => { qList.replaceChildren(...items.map(qBox)); qSummary.textContent = `See all ${items.length} quote${items.length === 1 ? '' : 's'} to edit`; };
+  root.append(h('h3', { text: 'Quotes' }), h('p', { class: 'hint', text: 'Things Adem said, shown as a scrolling strip on this private area’s page with when they were said.' }),
+    h('details', { class: 'acc' }, h('summary', {}, qSummary), h('div', { class: 'inner' }, qList)),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn', type: 'button', text: '+ Add quote', onclick: () => { qList.append(qBox({})); qList.closest('details').open = true; } }),
+      h('button', { class: 'btn primary', type: 'button', text: 'Save quotes', onclick: async () => {
+        const r = await api('/api/admin/private1/quotes', { method: 'POST', body: { quotes: [...qList.children].map(readQ) } }); if (!guard(r)) return;
+        msg(qOut, r, 'Saved.'); if (r.ok) renderQ(r.data.quotes);
+      } })), qOut, h('hr'));
+  api('/api/admin/private1/quotes').then(r => { if (guard(r) && r.ok) renderQ(r.data.quotes); });
+
+  // ---- photo timeline
+  const pFile = h('input', { class: 'field', type: 'file', accept: 'image/jpeg,image/png,image/webp', 'aria-label': 'Select a photo' });
+  const pOut = h('p', { class: 'err', role: 'status' }), pList = h('div', { class: 'drafts' });
+  function pBox(p) {
+    const img = h('img', { src: `/api/private1/photo/${p.id}`, alt: '', loading: 'lazy', style: 'width:100%;max-height:200px;object-fit:cover;border-radius:6px' });
+    const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = p.caption || '';
+    const date = h('input', { class: 'field', 'data-k': 'date', placeholder: 'e.g. Paris, June 2026', 'aria-label': 'Date / place' }); date.value = p.date || '';
+    const b = h('div', { class: 'draft', 'data-id': p.id }, img,
+      h('div', { class: 'cfg' }, h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Caption' }), caption),
+        h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Date / place' }), date)),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', type: 'button', text: '↑ Earlier', onclick: () => { const s = b.previousElementSibling; if (s) s.before(b); } }),
+        h('button', { class: 'btn', type: 'button', text: '↓ Later', onclick: () => { const s = b.nextElementSibling; if (s) s.after(b); } }),
+        h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => b.remove() })));
+    return b;
+  }
+  const readP = b => ({ id: b.dataset.id, caption: b.querySelector('[data-k="caption"]').value.trim(), date: b.querySelector('[data-k="date"]').value.trim() });
+  const renderP = items => pList.replaceChildren(...items.map(pBox));
+  const upload = h('button', { class: 'btn', type: 'button', text: 'Upload photo', onclick: async () => {
+    const f = pFile.files[0]; if (!f) { pOut.className = 'err'; pOut.textContent = 'Choose a photo first.'; return; }
+    const data = await readFile(f, true);
+    const r = await api('/api/admin/private1/photos/upload', { method: 'POST', body: { image_b64: String(data).split(',')[1] || '' } });
+    if (!guard(r)) return; if (!r.ok) { msg(pOut, r); return; }
+    pList.append(pBox({ id: r.data.id, caption: '', date: '' })); pOut.className = 'err ok'; pOut.textContent = 'Uploaded. Add a caption/date below, in timeline order, then save.'; pFile.value = '';
+  } });
+  root.append(h('h3', { text: 'Timeline photos' }),
+    h('p', { class: 'hint', text: 'Shown as a photo timeline on this private area’s page, oldest first. Upload, caption, order with Earlier/Later, then save.' }),
+    pFile, upload, h('hr'), pList, h('div', { class: 'row' },
+      h('button', { class: 'btn primary', type: 'button', text: 'Save timeline', onclick: async () => {
+        const r = await api('/api/admin/private1/photos', { method: 'POST', body: { photos: [...pList.children].map(readP) } }); if (!guard(r)) return;
+        msg(pOut, r, 'Saved.'); if (r.ok) renderP(r.data.photos);
+      } })), pOut);
+  api('/api/admin/private1/photos').then(r => { if (guard(r) && r.ok) renderP(r.data.photos); });
+}
+
+function private2Panel(root) {
+  personaField(root, 'private2_persona_prompt', 'Private Area 2 persona prompt');
 }
 
 function brain(root) {
