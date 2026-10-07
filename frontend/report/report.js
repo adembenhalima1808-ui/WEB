@@ -165,29 +165,6 @@ function renderRound3(R) {
   $('#r3Method').append(...R.method.map(t => el('li', { text: t })));
 }
 
-// ---- round 4: same card/table components as round 3
-function renderRound4(R) {
-  $('#r4Date').textContent = 'Round 4 · ' + R.date;
-  $('#h-r4').textContent = R.title;
-  $('#r4Lede').textContent = R.lede;
-  $('#r4Meta').append(...R.meta.map(t => el('span', { text: t })));
-  $('#r4Tiles').append(...R.tiles.map(([b, s, m]) => el('div', { class: 'tile' }, el('b', { text: b }), el('span', { text: s }), el('small', { text: m }))));
-  $('#r4Findings').append(...R.findings.map(f => el('div', { class: 'finding' },
-    el('span', { class: 'sev ' + (f.status === 'watch' ? 'watch' : 'good'), text: f.status === 'watch' ? 'Watching' : 'Fixed' }),
-    el('div', {},
-      el('h3', { text: f.title }),
-      el('p', { class: 'asked', text: f.trigger }),
-      el('p', { class: 'ba' }, el('span', { class: 'was', text: f.before }), el('span', { class: 'arrow', 'aria-hidden': 'true', text: '→' }), el('span', { class: 'now', text: f.after })),
-      el('p', { class: 'cause' }, el('b', { text: 'Why: ' }), f.cause),
-      el('p', { class: 'fix' }, el('b', { text: 'Fix: ' }), f.fix)))));
-  $('#r4Strengths').append(...R.strengths.map(f => el('div', { class: 'finding' }, el('span', { class: 'sev good', text: 'Holds up' }), el('div', {}, el('h3', { text: f.title }), el('p', { text: f.body })))));
-  $('#r4Checks').append(...R.checks.map(c => el('tr', {}, el('td', { text: c.name }),
-    el('td', { class: 'st ' + (c.result === 'pass' ? 'ok' : c.result === 'watch' ? 'watch' : 'no'), text: c.result === 'pass' ? 'PASS' : c.result === 'watch' ? 'WATCH' : 'FAIL' }),
-    el('td', { class: 'det', text: c.detail }))));
-  $('#r4Also').append(...R.also.map(t => el('li', { text: t })));
-  $('#r4Method').append(...R.method.map(t => el('li', { text: t })));
-}
-
 // ---- round tabs (arrow keys move between them; #round-2 in the URL opens that round)
 function wireRounds() {
   const tabs = [...document.querySelectorAll('.round-tab')];
@@ -208,8 +185,6 @@ fetch('/static/report/round2.json').then(r => r.json()).then(renderRound2)
   .catch(() => { $('#r2Lede').textContent = 'The round 2 data could not be loaded. Refresh the page to try again.'; });
 fetch('/static/report/round3.json').then(r => r.json()).then(renderRound3)
   .catch(() => { $('#r3Lede').textContent = 'The round 3 data could not be loaded. Refresh the page to try again.'; });
-fetch('/static/report/round4.json').then(r => r.json()).then(renderRound4)
-  .catch(() => { $('#r4Lede').textContent = 'The round 4 data could not be loaded. Refresh the page to try again.'; });
 
 const embedded = document.getElementById('report-data');
 (embedded ? Promise.resolve(JSON.parse(embedded.textContent)) : fetch('/static/report/data.json').then(r => r.json()))

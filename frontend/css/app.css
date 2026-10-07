@@ -244,6 +244,10 @@ hr { border: 0; border-top: 1px solid var(--line-soft); margin: 1.5rem 0; }
 .draft .was { color: var(--muted); font-size: .85rem; margin: 0 0 .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; margin: 0; }
 
-.gate-note { margin-top: 1rem; font-size: .85rem; }
+.gate-links { display: flex; justify-content: center; flex-wrap: wrap; gap: .6rem; margin-top: 1.4rem; }
+.gate-link { display: inline-flex; align-items: center; min-height: 36px; padding: .4rem 1rem; border-radius: 999px; border: 1px solid var(--line-soft); background: rgba(var(--accent-rgb), .04); color: var(--muted); font-size: .82rem; font-weight: 500; text-decoration: none; transition: border-color .25s, color .25s, box-shadow .25s, transform .15s var(--ease); }
+.gate-link:hover { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px rgba(var(--accent-rgb), .2); transform: translateY(-1px); }
+.gate-link:active { transform: translateY(0); }
+.gate-link.busy { opacity: .5; pointer-events: none; }
 .sidebar .btn + .btn { margin-top: .5rem; }
 @media (max-width: 520px) { .tab { flex: 1 1 0; white-space: normal; padding: .6rem .4rem; font-size: .9rem; line-height: 1.25; text-align: center; } }

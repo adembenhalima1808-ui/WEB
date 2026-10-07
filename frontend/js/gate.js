@@ -35,16 +35,16 @@ export function createGate({ onEnter }) {
     const err = h('p', { class: 'err', role: 'alert', text: note || '' });
     const input = h('input', { class: 'field', id: 'company', maxlength: '60', placeholder: 'e.g., Datadog, Hugging Face...', 'aria-label': 'Company name', autocomplete: 'off' });
     const btn = h('button', { class: 'btn primary', type: 'submit', text: 'Wake Agent' });
-    const skip = h('a', { href: '#', class: 'skip-link', text: 'Skip — just show me the CV', onclick: async e => {
+    const skip = h('a', { href: '#', class: 'gate-link', text: 'Skip to the CV', onclick: async e => {
       e.preventDefault(); if (skip.classList.contains('busy')) return;
       skip.classList.add('busy'); err.textContent = '';
       try { await enterWith('', err); } finally { skip.classList.remove('busy'); }
     } });
+    const reportLink = h('a', { href: '/report', target: '_blank', rel: 'noopener', class: 'gate-link', text: 'How this agent was tested' });
     screen(reactor('\u{1F98A}', 'sleeping'), h('h2', { text: 'Initialize Neural Link' }),
       h('p', { class: 'muted', text: 'Tell the agent which company you are visiting from, or just wake it up.' }),
       form([input], [btn], () => enterWith(input.value, err, btn), err),
-      h('p', { class: 'muted gate-note' }, skip, h('span', { 'aria-hidden': 'true', text: ' · ' }),
-        h('a', { href: '/report', target: '_blank', rel: 'noopener', text: 'See how this agent was tested' })));
+      h('div', { class: 'gate-links' }, skip, reportLink));
     focusFirst();
   }
 
