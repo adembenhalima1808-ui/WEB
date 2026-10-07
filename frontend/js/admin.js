@@ -168,17 +168,18 @@ function private1Panel(root) {
   function pBox(p) {
     const img = h('img', { src: `/api/private1/photo/${p.id}`, alt: '', loading: 'lazy', style: 'width:100%;max-height:200px;object-fit:cover;border-radius:6px' });
     const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = p.caption || '';
-    const date = h('input', { class: 'field', 'data-k': 'date', placeholder: 'e.g. Paris, June 2026', 'aria-label': 'Date / place' }); date.value = p.date || '';
+    const place = h('input', { class: 'field', 'data-k': 'place', placeholder: 'e.g. Paris', 'aria-label': 'Place' }); place.value = p.place || '';
+    const date = h('input', { class: 'field', type: 'month', 'data-k': 'date', 'aria-label': 'Month' }); date.value = p.date || '';
     const b = h('div', { class: 'draft', 'data-id': p.id }, img,
       h('div', { class: 'cfg' }, h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Caption' }), caption),
-        h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Date / place' }), date)),
+        h('div', {}, h('label', { class: 'lbl', text: 'Place' }), place), h('div', {}, h('label', { class: 'lbl', text: 'Month' }), date)),
+      h('p', { class: 'hint', text: 'The timeline always shows these oldest first, regardless of order here.' }),
       h('div', { class: 'row' },
-        h('button', { class: 'btn', type: 'button', text: '↑ Earlier', onclick: () => { const s = b.previousElementSibling; if (s) s.before(b); } }),
-        h('button', { class: 'btn', type: 'button', text: '↓ Later', onclick: () => { const s = b.nextElementSibling; if (s) s.after(b); } }),
         h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => b.remove() })));
     return b;
   }
-  const readP = b => ({ id: b.dataset.id, caption: b.querySelector('[data-k="caption"]').value.trim(), date: b.querySelector('[data-k="date"]').value.trim() });
+  const readP = b => ({ id: b.dataset.id, caption: b.querySelector('[data-k="caption"]').value.trim(),
+    place: b.querySelector('[data-k="place"]').value.trim(), date: b.querySelector('[data-k="date"]').value.trim() });
   const renderP = items => pList.replaceChildren(...items.map(pBox));
   const upload = h('button', { class: 'btn', type: 'button', text: 'Upload photo', onclick: async () => {
     const f = pFile.files[0]; if (!f) { pOut.className = 'err'; pOut.textContent = 'Choose a photo first.'; return; }

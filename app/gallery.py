@@ -43,21 +43,31 @@ def photo_path(photo_id):
     return p if p.is_file() else None
 
 
+DATE_RE = re.compile(r"\d{4}-\d{2}")
+
+
+def _sorted(items):
+    """Chronological, oldest first; undated entries keep their place at the end."""
+    return sorted(items, key=lambda p: p.get("date") or "9999-99")
+
+
 def clean(items):
     """Validate the photo list coming from the owner console. Drops entries whose file is gone."""
     out = []
     for p in (items if isinstance(items, list) else [])[:60]:
         if not isinstance(p, dict) or not photo_path(p.get("id")):
             continue
+        date = clean_text(p.get("date"), 7)
         out.append({"id": p["id"], "caption": clean_text(p.get("caption"), 400),
-                    "date": clean_text(p.get("date"), 40)})
-    return out
+                    "place": clean_text(p.get("place"), 80),
+                    "date": date if DATE_RE.fullmatch(date) else ""})
+    return _sorted(out)
 
 
 def current():
     cfg = load_config()
     items = cfg.get("sara_photos")
-    return items if isinstance(items, list) else []
+    return _sorted(items) if isinstance(items, list) else []
 
 
 def save(items):

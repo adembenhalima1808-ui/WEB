@@ -395,6 +395,20 @@ def h_feedback(ctx, body):
     return {"ok": True}
 
 
+def comm_post(vid, label, text, alert_prefix="MESSAGE FROM"):
+    """Append a message to this visitor's comm-link room and page Adem, tagged so a Telegram
+    reply routes back into the same room. Shared by the chat box, mood pings and memory
+    comments, so a reply to any of them shows up wherever the visitor is watching."""
+    def _do(d):
+        room = d.setdefault(vid, {"company": label, "messages": []})
+        room["company"] = label
+        room["messages"].append({"role": "user", "who": label, "content": text,
+                                 "timestamp": datetime.datetime.now().strftime("%H:%M:%S"), "unix_time": time.time()})
+        del room["messages"][:-200]
+    update_json(LIVE, {}, _do)
+    telegram.send_alert(f"{alert_prefix} {label} [#{vid[:8]}]:\n{text}\n\n(Reply to this message to answer them)")
+
+
 # --- direct comm-link (visitor <-> Adem over Telegram) ---
 @api(limit=10, window=60, public_maintenance=True)
 def h_comm_send(ctx, body):
@@ -403,16 +417,7 @@ def h_comm_send(ctx, body):
     text = clean_text(body.get("message"), 1000)
     if not text:
         return {"error": "Empty message"}, 400
-    label, vid = ctx.label, ctx.vid
-
-    def _do(d):
-        room = d.setdefault(vid, {"company": label, "messages": []})
-        room["company"] = label
-        room["messages"].append({"role": "user", "who": label, "content": text,
-                                 "timestamp": datetime.datetime.now().strftime("%H:%M:%S"), "unix_time": time.time()})
-        del room["messages"][:-200]
-    update_json(LIVE, {}, _do)
-    telegram.send_alert(f"MESSAGE FROM {label} [#{vid[:8]}]:\n{text}\n\n(Reply to this message to answer them)")
+    comm_post(ctx.vid, ctx.label, text)
     return {"ok": True}
 
 
@@ -774,7 +779,8 @@ def h_private1_photo_add(ctx, body):
         photo_id = gallery.save_upload(raw)
     except ValueError as e:
         return {"error": str(e)}, 422
-    entry = {"id": photo_id, "caption": clean_text(body.get("caption"), 400), "date": clean_text(body.get("date"), 40)}
+    entry = {"id": photo_id, "caption": clean_text(body.get("caption"), 400),
+             "place": clean_text(body.get("place"), 80), "date": clean_text(body.get("date"), 7)}
     photos = gallery.save(gallery.current() + [entry])
     return {"ok": True, "photos": photos}
 
@@ -785,11 +791,44 @@ MOODS = {"\U0001F970 Loved", "\U0001F60D Missing you", "\U0001F622 Sad", "\U0001
 
 @api(roles=("sara",), limit=8, window=60)
 def h_private1_mood(ctx, body):
-    """A one-tap mood ping from the sidebar straight to Adem's phone."""
+    """A one-tap mood ping from the sidebar straight to Adem's phone, and into the same
+    comm-link room Direct Comm-Link shows, so a reply from Telegram reaches her there."""
     mood = clean_text(body.get("mood"), 60)
     if mood not in MOODS:
         return {"error": "Pick one of the mood buttons."}, 400
-    telegram.send_alert(f"\U0001F495 Status ping: {mood}")
+    comm_post(ctx.vid, ctx.label, f"Feeling: {mood}", alert_prefix="\U0001F495 MOOD PING FROM")
+    return {"ok": True}
+
+
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+           "October", "November", "December"]
+
+
+def _month_name(iso):
+    m = re.fullmatch(r"(\d{4})-(\d{2})", iso or "")
+    if not m:
+        return ""
+    year, month = m.groups()
+    month = int(month)
+    return f"{_MONTHS[month - 1]} {year}" if 1 <= month <= 12 else ""
+
+
+def _memory_label(photo):
+    if not photo:
+        return "a memory"
+    month = _month_name(photo.get("date", ""))
+    bits = [b for b in (photo.get("place"), month) if b]
+    return ", ".join(bits) if bits else "a memory"
+
+
+@api(roles=("sara",), limit=10, window=60)
+def h_private1_memory_comment(ctx, body):
+    """A comment on the 'memory of the day', posted the same way as a mood ping."""
+    text = clean_text(body.get("text"), 500)
+    if not text:
+        return {"error": "Write something first."}, 400
+    photo = next((p for p in gallery.current() if p["id"] == body.get("photo_id")), None)
+    comm_post(ctx.vid, ctx.label, f"On {_memory_label(photo)}: {text}", alert_prefix="\U0001F4AC MEMORY COMMENT FROM")
     return {"ok": True}
 
 
@@ -1033,6 +1072,7 @@ routes = [
     Route("/api/private1/photo/{photo_id}", h_sara_photo, methods=["GET"]),
     Route("/api/private1/photos", h_private1_photo_add, methods=["POST"]),
     Route("/api/private1/mood", h_private1_mood, methods=["POST"]),
+    Route("/api/private1/memory-comment", h_private1_memory_comment, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),
     Route("/api/admin/telegram/clear", h_admin_tg_clear, methods=["POST"]),
     Route("/api/admin/brain", h_admin_brain_get, methods=["GET"]),
