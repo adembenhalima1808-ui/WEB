@@ -24,7 +24,7 @@ function icon(path) {
 const greetingWord = () => { const hr = new Date().getHours(); return hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening'; };
 const hexToRgb = hex => /^#[0-9a-fA-F]{6}$/.test(hex) ? [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ') : '255, 122, 0';
 
-function sidebar({ kind, cfg, ui }) {
+function sidebar({ kind, cfg, ui, onAddMemory }) {
   const aside = $('#sidebar'); aside.textContent = '';
   const showCv = kind !== 'private', showSkills = showCv && cfg.skills_enabled !== false;
   aside.append(h('h2', { text: 'Adem Ben Halima' }));
@@ -32,6 +32,19 @@ function sidebar({ kind, cfg, ui }) {
     aside.append(h('p', { class: 'caption', text: ui.caption }), h('div', { class: 'status theme-' + ui.theme },
       h('div', { class: 'status-row' }, h('span', { class: 'pulse', 'aria-hidden': 'true' }), h('span', { class: 'status-text', text: ui.badge })),
       h('div', { class: 'status-sub', text: '\u{1F4CD} ' + ui.badge_sub })));
+    if ('photos' in ui) {
+      aside.append(h('button', { class: 'btn primary', type: 'button', text: '✨ Add a Memory', onclick: () => onAddMemory && onAddMemory() }));
+      if (ui.moods && ui.moods.length) {
+        const mOut = h('p', { class: 'err', role: 'status' });
+        const grid = h('div', { class: 'mood-grid' }, ...ui.moods.map(m => h('button', { class: 'mood-btn', type: 'button', text: m, onclick: async e => {
+          const btn = e.currentTarget; btn.disabled = true;
+          const r = await api('/api/private1/mood', { method: 'POST', body: { mood: m } });
+          btn.disabled = false;
+          mOut.className = r.ok ? 'err ok' : 'err'; mOut.textContent = r.ok ? 'Sent — he’ll know.' : errText(r);
+        } })));
+        aside.append(h('hr'), h('p', { class: 'caption', text: 'How are you feeling?' }), grid, mOut);
+      }
+    }
   } else if (kind === 'admin') {
     aside.append(h('p', { class: 'caption', text: cfg.sidebar_subtitle }), h('div', { class: 'status root' },
       h('div', { class: 'status-row' }, h('span', { class: 'pulse', 'aria-hidden': 'true' }), h('span', { class: 'status-text', text: 'ROOT ACCESS ACTIVE' })),
@@ -70,7 +83,7 @@ function sidebar({ kind, cfg, ui }) {
   } else {
     aside.append(h('hr'));
   }
-  aside.append(h('button', { class: 'btn', type: 'button', text: 'Terminate Connection', onclick: async () => { await api('/api/end', { method: 'POST' }); location.reload(); } }));
+  aside.append(h('button', { class: 'btn', type: 'button', text: 'Terminate Connection', onclick: async () => { try { localStorage.removeItem('kitsuneTheme'); } catch (e) {} await api('/api/end', { method: 'POST' }); location.reload(); } }));
   return badges;
 }
 
@@ -137,6 +150,12 @@ function wireMenu() {
 
 export async function buildApp({ role, cfg, me }) {
   $('#app').classList.remove('hide'); wireMenu();
+  // A theme class may already be sitting on <html> from the early pre-paint restore script
+  // (so a reload doesn't flash the default colour before this role is known). Drop it here;
+  // the private-area branch below re-adds the correct one once the real role is confirmed, so
+  // a returning visitor sees zero flicker, and a different role on the same browser never
+  // inherits a stale colour.
+  document.documentElement.classList.remove('theme-a', 'theme-b');
   const main = $('#main'); main.textContent = '';
   const refresh = Number(cfg.refresh_rate) || 5;
   const color = cfg.status_color;
@@ -156,13 +175,15 @@ export async function buildApp({ role, cfg, me }) {
   if (role) {
     const r = await api('/api/family/state');
     if (!r.ok) { location.reload(); return; }
-    const ui = r.data; document.title = ui.title; document.body.classList.add('theme-' + ui.theme);
-    sidebar({ kind: 'private', cfg, ui });
+    const ui = r.data; document.title = ui.title; document.documentElement.classList.add('theme-' + ui.theme);
+    try { localStorage.setItem('kitsuneTheme', ui.theme); } catch (e) {}
+    let openMemory = null;
+    sidebar({ kind: 'private', cfg, ui, onAddMemory: () => openMemory && openMemory() });
     main.append(h('h1', { text: ui.title }), h('p', { class: 'meta' }, h('b', { text: 'Role:' }), ` ${ui.role_line} | `, h('b', { text: 'Location:' }), ` ${ui.location}`), h('p', { text: ui.intro }));
     if ('photos' in ui) {
       if (ui.quotes && ui.quotes.length) { const qb = h('div'); main.append(qb, h('hr')); renderQuoteMarquee(qb, ui.quotes); }
       main.append(h('h3', { text: 'Our Timeline' }));
-      const tb = h('div'); main.append(tb, h('hr')); renderTimeline(tb, ui.photos || []);
+      const tb = h('div'); main.append(tb, h('hr')); openMemory = renderTimeline(tb, ui.photos || []);
     } else {
       main.append(h('h3', { text: ui.radar_title }));
       const rb = h('div', { class: 'radar-wrap' }); main.append(rb, h('hr'));

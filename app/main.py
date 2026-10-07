@@ -516,6 +516,7 @@ def h_family_state(ctx, body):
         ui["history"] = sara_history()
         ui["photos"] = gallery.current()
         ui["quotes"] = quotes.current()
+        ui["moods"] = sorted(MOODS)
         ui["greeting"] = ("{g}, Sara.\n\nWelcome back to your private access level. Ask me anything, tell me if "
                           "Adem's being annoying, or just say hi. What's on your mind?")
     else:
@@ -778,6 +779,20 @@ def h_private1_photo_add(ctx, body):
     return {"ok": True, "photos": photos}
 
 
+MOODS = {"\U0001F970 Loved", "\U0001F60D Missing you", "\U0001F622 Sad", "\U0001F624 Annoyed",
+         "\U0001F97A Need you", "\U0001F634 Tired", "\U0001F389 Great day", "\U0001F917 Just thinking of you"}
+
+
+@api(roles=("sara",), limit=8, window=60)
+def h_private1_mood(ctx, body):
+    """A one-tap mood ping from the sidebar straight to Adem's phone."""
+    mood = clean_text(body.get("mood"), 60)
+    if mood not in MOODS:
+        return {"error": "Pick one of the mood buttons."}, 400
+    telegram.send_alert(f"\U0001F495 Status ping: {mood}")
+    return {"ok": True}
+
+
 async def h_sara_photo(request):
     """Serve a stored photo. Gated to Sara and the owner, same as every other private endpoint."""
     ctx = Ctx(request)
@@ -1017,6 +1032,7 @@ routes = [
     Route("/api/admin/private1/quotes", h_admin_sara_quotes_put, methods=["POST"]),
     Route("/api/private1/photo/{photo_id}", h_sara_photo, methods=["GET"]),
     Route("/api/private1/photos", h_private1_photo_add, methods=["POST"]),
+    Route("/api/private1/mood", h_private1_mood, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),
     Route("/api/admin/telegram/clear", h_admin_tg_clear, methods=["POST"]),
     Route("/api/admin/brain", h_admin_brain_get, methods=["GET"]),

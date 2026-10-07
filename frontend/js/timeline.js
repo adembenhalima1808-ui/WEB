@@ -1,6 +1,6 @@
 // Private area 1's page: a photo timeline (Adem adds photos from the owner console, this
-// private area's own visitor can add her own too) and a scrolling strip of things Adem has
-// said, each stamped with when he said it.
+// private area's own visitor can add her own too, via a popup) and a scrolling strip of things
+// Adem has said, each stamped with when he said it.
 import { h, api, errText, readFile } from './util.js';
 
 function timelineCard(p, i) {
@@ -18,8 +18,9 @@ function observeReveal(line) {
   line.querySelectorAll('.timeline-item').forEach(el => io.observe(el));
 }
 
+// Returns { open() } so the sidebar's "Add a Memory" shortcut can trigger the same popup.
 export function renderTimeline(container, photos) {
-  const empty = h('p', { class: 'muted', text: 'No photos yet — add the first one below.' });
+  const empty = h('p', { class: 'muted', text: 'No photos yet — add the first one.' });
   const line = h('div', { class: 'timeline' });
   const renderList = items => {
     line.replaceChildren(...items.map(timelineCard));
@@ -32,19 +33,30 @@ export function renderTimeline(container, photos) {
   const caption = h('input', { class: 'field', maxlength: '400', placeholder: 'A little caption (optional)', 'aria-label': 'Caption' });
   const date = h('input', { class: 'field', maxlength: '40', placeholder: 'e.g. Paris, June 2026 (optional)', 'aria-label': 'Date / place' });
   const out = h('p', { class: 'err', role: 'status' });
-  const add = h('button', { class: 'btn primary', type: 'button', text: 'Add to our timeline', onclick: async () => {
+  const addBtn = h('button', { class: 'btn primary', type: 'button', text: 'Add to our timeline', onclick: async () => {
     const f = file.files[0]; if (!f) { out.className = 'err'; out.textContent = 'Choose a picture first.'; return; }
-    add.disabled = true; out.className = 'err'; out.textContent = '';
+    addBtn.disabled = true; out.className = 'err'; out.textContent = '';
     const data = await readFile(f, true);
     const r = await api('/api/private1/photos', { method: 'POST', body: { image_b64: String(data).split(',')[1] || '', caption: caption.value, date: date.value } });
-    add.disabled = false;
+    addBtn.disabled = false;
     if (!r.ok) { out.textContent = errText(r); return; }
-    renderList(r.data.photos); out.className = 'err ok'; out.textContent = 'Added!';
-    file.value = ''; caption.value = ''; date.value = '';
+    renderList(r.data.photos); file.value = ''; caption.value = ''; date.value = ''; out.textContent = '';
+    close();
   } });
 
-  container.append(empty, line, h('div', { class: 'timeline-add' },
-    h('p', { class: 'timeline-add-label', text: 'Add your own picture' }), file, caption, date, add, out));
+  const overlay = h('div', { class: 'modal-overlay', hidden: true, onclick: e => { if (e.target === overlay) close(); } });
+  const closeBtn = h('button', { class: 'modal-close', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => close() });
+  const card = h('div', { class: 'modal-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Add a memory' },
+    closeBtn, h('h3', { text: '✨ Add a Memory' }), file, caption, date, addBtn, out);
+  overlay.append(card);
+  function open() { overlay.hidden = false; file.focus(); document.addEventListener('keydown', onKey); }
+  function close() { overlay.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.body.append(overlay);
+
+  const trigger = h('button', { class: 'btn primary timeline-add-trigger', type: 'button', text: '✨ Add a Memory', onclick: open });
+  container.append(empty, line, h('div', { class: 'timeline-add' }, trigger));
+  return { open };
 }
 
 export function renderQuoteMarquee(container, quotes) {

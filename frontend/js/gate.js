@@ -6,6 +6,23 @@ const reactor = (icon, cls) => h('span', { class: 'reactor ' + cls, 'aria-hidden
 function screen(...nodes) { const el = inner(); el.textContent = ''; el.className = 'gate-inner'; el.append(...nodes); void el.offsetWidth; }
 function focusFirst() { const f = $('input', inner()); if (f) f.focus(); }
 
+// Welcome moment for theme-a: the ambient stars flash brighter and pinker, then a shower of
+// shooting stars becomes the background's whole focus for a moment, as if she is a star.
+function starShower() {
+  const ashes = $('.ashes');
+  if (ashes) { ashes.classList.add('flash'); setTimeout(() => ashes.classList.remove('flash'), 1400); }
+  const COUNT = 7;
+  for (let i = 0; i < COUNT; i++) {
+    const star = h('span', { class: 'shooting-star', 'aria-hidden': 'true' });
+    star.style.setProperty('--star-top', (8 + Math.random() * 55) + '%');
+    star.style.setProperty('--star-dy', (35 + Math.random() * 35) + 'vh');
+    star.style.setProperty('--star-duration', (1.3 + Math.random() * 0.6) + 's');
+    star.style.setProperty('--star-delay', (0.5 + i * 0.22 + Math.random() * 0.15) + 's');
+    document.body.append(star);
+    setTimeout(() => star.remove(), 4000);
+  }
+}
+
 function form(fields, buttons, onSubmit, errBox) {
   const f = h('form', { autocomplete: 'off' }, ...fields);
   const row = h('div', { class: buttons.length > 1 ? 'gate-actions' : '' }, ...buttons);
@@ -60,19 +77,21 @@ export function createGate({ onEnter }) {
 
   // ---- 3. private-door riddle (all wording comes from the server)
   function showChallenge(c) {
-    document.body.classList.add('theme-' + c.theme);
+    document.documentElement.classList.add('theme-' + c.theme);
     const err = h('p', { class: 'err', role: 'alert' });
     const input = h('input', { class: 'field', type: 'password', maxlength: '120', 'aria-label': 'Your answer', placeholder: 'Your answer', autocomplete: 'off' });
     const ok = h('button', { class: 'btn primary', type: 'submit', text: c.button });
-    const cancel = h('button', { class: 'btn', type: 'button', text: c.cancel, onclick: () => { document.body.classList.remove('theme-' + c.theme); showStart(); } });
+    const cancel = h('button', { class: 'btn', type: 'button', text: c.cancel, onclick: () => { document.documentElement.classList.remove('theme-' + c.theme); showStart(); } });
     screen(reactor(c.icon, c.theme === 'a' ? 'heart' : 'devil'), h('h2', { class: 'glow-accent', text: c.title }),
       h('p', { class: 'muted' }, c.prompt, h('br'), h('small', {}, h('i', { text: c.hint }))),
       form([input], [ok, cancel], async () => {
         const r = await api('/api/auth/family', { method: 'POST', body: { answer: input.value } });
         input.value = '';
         if (!r.ok) { err.textContent = errText(r); return; }
+        try { localStorage.setItem('kitsuneTheme', r.data.theme); } catch (e) {}
         const line = h('p', { class: 'fade-in muted', text: r.data.lines[0] });
         screen(reactor(r.data.icon, r.data.theme === 'a' ? 'heart' : 'devil'), h('h2', { class: 'fade-in glow-accent', text: r.data.title }), line);
+        if (r.data.theme === 'a') starShower();
         await sleep(1200); line.textContent = r.data.lines[1]; line.className = 'glow-accent'; await sleep(2000);
         onEnter();
       }, err));
