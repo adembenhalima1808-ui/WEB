@@ -24,7 +24,7 @@
       "title": "The homepage would keep growing with every new project",
       "trigger": "Thinking ahead to adding more project cards over time",
       "before": "The Projects section rendered every card in the list, one under another, straight on the homepage",
-      "after": "The homepage shows the first two cards, with a \"View all N projects\" link once there are more; every card, always, lives at its own /projects page",
+      "after": "The homepage shows the first two cards with an always-visible \"All projects\" link below them (it reads \"View all N projects\" once there are more than two); every card, always, lives at its own /projects page",
       "cause": "The Projects grid had no cap — it was built when there was only one project card",
       "fix": "Added a FEATURED_PROJECTS cutoff in shell.js, a new /projects page, and pulled card rendering into one shared project-card.js module so the homepage preview and the full list can never draw a card differently"
     }
@@ -40,7 +40,8 @@
   ],
   "also": [
     "Shared the card-rendering code between the homepage and /projects in one project-card.js module, so the two can't quietly drift apart.",
-    "Documented the homepage cutoff and the /projects page in the README's project-management section."
+    "Documented the homepage cutoff and the /projects page in the README's project-management section.",
+    "First version only linked to /projects once there were more than two cards — with exactly two, the page had no way in from the UI at all. Made the link always visible."
   ],
   "method": [
     "Read through app/config_store.py's load_config() and compared it against what a config.json saved before the Kitsune card existed would actually return.",

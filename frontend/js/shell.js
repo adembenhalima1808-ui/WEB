@@ -88,9 +88,10 @@ async function loadProjects(section, grid) {
   const list = r.ok ? r.data.projects || [] : [];
   if (!list.length) { section.remove(); return; }
   grid.replaceChildren(...list.slice(0, FEATURED_PROJECTS).map(projectCard));
-  if (list.length > FEATURED_PROJECTS) {
-    section.append(h('div', { class: 'projects-more' }, h('a', { class: 'btn', href: '/projects', text: `View all ${list.length} projects \u2192` })));
-  }
+  // Always linked, not just once there's overflow: with <= FEATURED_PROJECTS cards /projects
+  // would otherwise have no way in from the UI at all.
+  const label = list.length > FEATURED_PROJECTS ? `View all ${list.length} projects \u2192` : 'All projects \u2192';
+  section.append(h('div', { class: 'projects-more' }, h('a', { class: 'btn', href: '/projects', text: label })));
 }
 
 // Recommendations: the strongest sentence up front, the full text one click away, and where each one can be checked.
