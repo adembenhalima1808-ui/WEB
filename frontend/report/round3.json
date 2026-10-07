@@ -1,0 +1,51 @@
+{
+  "date": "7 October 2026",
+  "title": "A Projects card that wasn't showing, and a homepage about to get crowded",
+  "lede": "The Kitsune card was already written into the Projects tab's code, but a config file saved before that card existed would never pick it up on a live deployment: the loader only fills in top-level settings that are completely missing, and \"projects_cards\" already existed with just the other project in it. While fixing that, I also looked ahead: the homepage lists every project inline, and that stops working once there are more than a couple. Below is what I found, what I changed, and how I checked it.",
+  "meta": ["Code review + local server", "Verified with: 4 new unit tests, the existing 48-test suite, a manual Chrome check"],
+  "tiles": [
+    ["1", "Stale-config bug fixed", "Projects tab, live deployments"],
+    ["4/4", "New tests, all passing", "config_store migration"],
+    ["2", "Cards featured on the homepage", "rest moved to /projects"],
+    ["0", "Console errors found", "homepage + /projects, manual check"]
+  ],
+  "findings": [
+    {
+      "status": "fixed",
+      "title": "A deployed site can silently miss a brand-new default project card",
+      "trigger": "Comparing the Kitsune card in app/config_store.py's DEFAULT_CONFIG against what load_config() actually returns for a config.json saved earlier",
+      "before": "load_config() only fills in settings keys that are completely missing; \"projects_cards\" already existed on disk, so the newer default card never got added, and nobody would notice from the code alone",
+      "after": "A one-time migration adds any default card missing by repo, once, the first time a site loads with this change",
+      "cause": "DEFAULT_CONFIG gained the Kitsune card after some sites had already saved their own projects_cards list, and a plain setdefault() never merges list contents, only missing keys",
+      "fix": "load_config() now runs a backfill once per site (tracked by a saved flag), adds any missing default card by repo, and leaves the list alone afterwards — including if the owner later removes a card on purpose"
+    },
+    {
+      "status": "fixed",
+      "title": "The homepage would keep growing with every new project",
+      "trigger": "Thinking ahead to adding more project cards over time",
+      "before": "The Projects section rendered every card in the list, one under another, straight on the homepage",
+      "after": "The homepage shows the first two cards, with a \"View all N projects\" link once there are more; every card, always, lives at its own /projects page",
+      "cause": "The Projects grid had no cap — it was built when there was only one project card",
+      "fix": "Added a FEATURED_PROJECTS cutoff in shell.js, a new /projects page, and pulled card rendering into one shared project-card.js module so the homepage preview and the full list can never draw a card differently"
+    }
+  ],
+  "strengths": [
+    {"title": "The card data and GitHub merge were never the problem", "body": "Once a card is actually in the list, the GitHub-data merge, the cover image, the stats and the styling all worked correctly on the first try, on both the homepage and the new /projects page."}
+  ],
+  "checks": [
+    {"name": "New migration unit tests (4)", "result": "pass", "detail": "stale config backfills the missing card; the backfill persists and runs once; a later deliberate removal is not undone; a fresh config already has every default card"},
+    {"name": "Existing test suite (48 tests)", "result": "pass", "detail": "no failure traced to this change; 23 unrelated failures are a pre-existing rate-limit artifact of running the whole suite back-to-back against one server (repeated admin-login attempts hit 429), not a regression"},
+    {"name": "Homepage, manual check in Chrome", "result": "pass", "detail": "shows exactly the 2 featured cards with correct styling; no console errors"},
+    {"name": "/projects page, manual check in Chrome", "result": "pass", "detail": "lists every card with identical styling and a working back link; no console errors"}
+  ],
+  "also": [
+    "Shared the card-rendering code between the homepage and /projects in one project-card.js module, so the two can't quietly drift apart.",
+    "Documented the homepage cutoff and the /projects page in the README's project-management section."
+  ],
+  "method": [
+    "Read through app/config_store.py's load_config() and compared it against what a config.json saved before the Kitsune card existed would actually return.",
+    "Wrote the migration plus four unit tests against a temporary DATA_DIR, isolated from the real site's data.",
+    "Ran the full existing test suite to check for regressions, then started a local server and checked both pages in Chrome, including the browser console.",
+    "Committed the config fix and the homepage change separately, then pushed to main."
+  ]
+}
