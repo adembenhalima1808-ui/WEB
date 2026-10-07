@@ -100,25 +100,34 @@ def load_config():
     cfg = read_json("config.json", {})
     for k, v in DEFAULT_CONFIG.items():
         cfg.setdefault(k, v)
-    if not cfg.get("_default_cards_backfilled"):
-        _backfill_default_cards(cfg)
-        cfg["_default_cards_backfilled"] = True
+    if _backfill_default_cards(cfg):
         save_config(cfg)
     return cfg
 
 
 def _backfill_default_cards(cfg):
-    """One-time migration: a config.json saved before a new default project card
-    existed (e.g. Kitsune, added after the first Projects redesign) never picks
-    it up, because 'projects_cards' already exists and setdefault only fills
-    truly-missing keys. Add any default card whose repo isn't already present,
-    once, so earlier deployments catch up. Later owner edits (including
-    deliberately removing a card) are respected after this first run."""
+    """A config.json saved before a new default project card existed never picks
+    it up on its own, because 'projects_cards' already exists and setdefault
+    only fills truly-missing keys. Each default card gets exactly one chance to
+    be added, tracked per repo (not a single one-time flag) so a card added to
+    DEFAULT_CONFIG later -- after an earlier backfill already ran -- still gets
+    its own turn. Once a repo has been offered, it is never re-added, so an
+    owner who deliberately removes a card keeps it removed."""
+    offered = set(cfg.setdefault("_backfilled_card_repos", []))
     cards = cfg.setdefault("projects_cards", [])
     existing_repos = {c.get("repo") for c in cards}
+    changed = False
     for default_card in DEFAULT_CONFIG["projects_cards"]:
-        if default_card["repo"] not in existing_repos:
+        repo = default_card["repo"]
+        if repo in offered:
+            continue
+        if repo not in existing_repos:
             cards.append(dict(default_card))
+        offered.add(repo)
+        changed = True
+    if changed:
+        cfg["_backfilled_card_repos"] = sorted(offered)
+    return changed
 
 
 def save_config(cfg):

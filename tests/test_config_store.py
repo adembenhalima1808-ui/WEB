@@ -42,12 +42,29 @@ class BackfillDefaultCardsTests(unittest.TestCase):
         repos = {c["repo"] for c in cfg["projects_cards"]}
         self.assertEqual(repos, ALL_DEFAULT_REPOS)
 
-    def test_backfill_runs_once_and_persists_to_disk(self):
+    def test_backfill_persists_to_disk(self):
         _write_stale_config()
         config_store.load_config()
         on_disk = json.loads(CONFIG_PATH.read_text())
-        self.assertTrue(on_disk["_default_cards_backfilled"])
+        self.assertEqual(set(on_disk["_backfilled_card_repos"]), ALL_DEFAULT_REPOS)
         self.assertEqual(len(on_disk["projects_cards"]), len(ALL_DEFAULT_REPOS))
+
+    def test_a_default_card_added_later_still_gets_backfilled(self):
+        # Regression: an earlier version tracked one global "has this ever run"
+        # flag. Once a site had been migrated for the first two default cards,
+        # that flag stayed true forever, so a third card added to
+        # DEFAULT_CONFIG later was silently never backfilled on that site.
+        _write_stale_config()
+        config_store.load_config()  # first load: backfills warehouse + kitsune only, as if churn didn't exist yet
+
+        on_disk = json.loads(CONFIG_PATH.read_text())
+        on_disk["projects_cards"] = [c for c in on_disk["projects_cards"] if c["repo"] != CHURN_REPO]
+        on_disk["_backfilled_card_repos"] = [r for r in on_disk["_backfilled_card_repos"] if r != CHURN_REPO]
+        CONFIG_PATH.write_text(json.dumps(on_disk))
+
+        cfg = config_store.load_config()
+        repos = {c["repo"] for c in cfg["projects_cards"]}
+        self.assertIn(CHURN_REPO, repos)
 
     def test_owner_removal_after_backfill_is_not_undone(self):
         _write_stale_config()

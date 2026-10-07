@@ -15,9 +15,9 @@
       "title": "A deployed site can silently miss a brand-new default project card",
       "trigger": "Comparing the Kitsune card in app/config_store.py's DEFAULT_CONFIG against what load_config() actually returns for a config.json saved earlier",
       "before": "load_config() only fills in settings keys that are completely missing; \"projects_cards\" already existed on disk, so the newer default card never got added, and nobody would notice from the code alone",
-      "after": "A one-time migration adds any default card missing by repo, once, the first time a site loads with this change",
+      "after": "load_config() adds any default card not yet offered, tracked per repo, and leaves the list alone afterwards — including if the owner later removes a card on purpose",
       "cause": "DEFAULT_CONFIG gained the Kitsune card after some sites had already saved their own projects_cards list, and a plain setdefault() never merges list contents, only missing keys",
-      "fix": "load_config() now runs a backfill once per site (tracked by a saved flag), adds any missing default card by repo, and leaves the list alone afterwards — including if the owner later removes a card on purpose"
+      "fix": "The first version of this fix tracked one global \"has this run\" flag. That broke the moment a third default card (the churn project, below) was added after the flag was already set on the live site — the flag being true skipped the check entirely, so the new card was silently never offered. Switched to tracking which repos have been offered individually, so a card added to DEFAULT_CONFIG later still gets its own first chance, independent of earlier ones."
     },
     {
       "status": "fixed",
@@ -41,7 +41,8 @@
   "also": [
     "Shared the card-rendering code between the homepage and /projects in one project-card.js module, so the two can't quietly drift apart.",
     "Documented the homepage cutoff and the /projects page in the README's project-management section.",
-    "First version only linked to /projects once there were more than two cards — with exactly two, the page had no way in from the UI at all. Made the link always visible."
+    "First version only linked to /projects once there were more than two cards — with exactly two, the page had no way in from the UI at all. Made the link always visible.",
+    "Added the customer segmentation & churn prediction project as a third card — the first real test of the homepage cutoff and the backfill fix above."
   ],
   "method": [
     "Read through app/config_store.py's load_config() and compared it against what a config.json saved before the Kitsune card existed would actually return.",
