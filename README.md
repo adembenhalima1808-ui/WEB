@@ -83,6 +83,8 @@ Project cards live in the console's **Projects** tab. Each card points at any pu
 
 With no cards, the page lists your own public repos instead (choose which under **CMS & Identity**). The whole section can be hidden there too.
 
+The homepage only features the first two cards, so it stays short as more projects get added. Every card, in order, is always at `/projects`; the homepage links there once there are more than two.
+
 ## Editing content
 
 - **CV:** edit `tools/resume.yaml`, then run `python tools/build_resume.py` (needs `pyyaml` and `reportlab`) to rebuild `data/resume.txt` and `data/resume.pdf`. You can also upload a CV from the console's **Profile Sync** tab.

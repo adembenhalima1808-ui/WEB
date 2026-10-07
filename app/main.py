@@ -912,6 +912,7 @@ G, P = ("GET",), ("POST",)
 routes = [
     Route("/", page("index.html")),
     Route("/report", page("report/index.html")),
+    Route("/projects", page("projects/index.html")),
     Route("/api/config", h_config, methods=["GET"]),
     Route("/api/gate", h_gate, methods=["POST"]),
     Route("/api/skills", h_skills, methods=["GET"]),

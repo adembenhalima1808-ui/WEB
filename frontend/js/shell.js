@@ -4,6 +4,11 @@ import { drawRadar } from './radar.js';
 import { makeTabs } from './tabs.js';
 import { createChat, createComm, createOps, createTools } from './chat.js';
 import { buildAdmin } from './admin.js';
+import { projectCard } from './project-card.js';
+
+// How many project cards the homepage shows before linking out to /projects,
+// so the page stays short no matter how many projects get added later.
+const FEATURED_PROJECTS = 2;
 
 const NS = 'http://www.w3.org/2000/svg';
 const ICONS = {
@@ -77,30 +82,15 @@ async function loadSkills(badges, radarBox) {
 }
 
 // Project cards: owner-written text merged with live GitHub data. The whole section disappears when there is nothing to show.
-const monthYear = d => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en', { month: 'short', year: 'numeric' }); };
-function projectCard(p) {
-  const main = p.url || p.link || null, ext = u => /^https:/.test(u) ? { target: '_blank', rel: 'noopener noreferrer' } : {};
-  const meta = [p.stars ? `\u2605 ${p.stars}` : '', p.pushed ? `Updated ${monthYear(p.pushed)}` : ''].filter(Boolean).join(' \u00B7 ');
-  return h('article', { class: 'project' },
-    p.image ? h('a', { class: 'project-cover', href: main, tabindex: '-1', 'aria-hidden': 'true', ...ext(main || '') },
-      h('img', { src: p.image, alt: '', loading: 'lazy', width: '960', height: '540' }),
-      p.language ? h('span', { class: 'project-lang', text: p.language }) : null) : null,
-    h('div', { class: 'project-body' },
-      p.role ? h('p', { class: 'project-role', text: p.role }) : null,
-      h('h4', {}, main ? h('a', { href: main, text: p.title, ...ext(main) }) : p.title),
-      p.tagline ? h('p', { class: 'tagline', text: p.tagline }) : null,
-      p.highlights.length ? h('div', { class: 'project-stats' }, p.highlights.map(x => h('div', {}, h('b', { text: x.value }), h('span', { text: x.label })))) : null,
-      p.tech.length ? h('div', { class: 'badges' }, p.tech.map(t => h('span', { class: 'badge', text: t }))) : null,
-      h('div', { class: 'project-foot' },
-        meta || (!p.image && p.language) ? h('span', { class: 'meta-line', text: [!p.image ? p.language : '', meta].filter(Boolean).join(' \u00B7 ') }) : null,
-        p.url ? h('a', { class: 'btn', href: p.url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${p.title} source code on GitHub` }, icon(ICONS.github), 'Code') : null,
-        p.link ? h('a', { class: 'btn primary', href: p.link, ...ext(p.link) }, p.link_label + (/^https:/.test(p.link) ? ' \u2197' : '')) : null)));
-}
+// Only the first FEATURED_PROJECTS show here; the rest stay one click away on /projects so the homepage doesn't grow forever.
 async function loadProjects(section, grid) {
   const r = await api('/api/projects');
   const list = r.ok ? r.data.projects || [] : [];
   if (!list.length) { section.remove(); return; }
-  grid.replaceChildren(...list.map(projectCard));
+  grid.replaceChildren(...list.slice(0, FEATURED_PROJECTS).map(projectCard));
+  if (list.length > FEATURED_PROJECTS) {
+    section.append(h('div', { class: 'projects-more' }, h('a', { class: 'btn', href: '/projects', text: `View all ${list.length} projects \u2192` })));
+  }
 }
 
 // Recommendations: the strongest sentence up front, the full text one click away, and where each one can be checked.
