@@ -91,7 +91,25 @@ def load_config():
     cfg = read_json("config.json", {})
     for k, v in DEFAULT_CONFIG.items():
         cfg.setdefault(k, v)
+    if not cfg.get("_default_cards_backfilled"):
+        _backfill_default_cards(cfg)
+        cfg["_default_cards_backfilled"] = True
+        save_config(cfg)
     return cfg
+
+
+def _backfill_default_cards(cfg):
+    """One-time migration: a config.json saved before a new default project card
+    existed (e.g. Kitsune, added after the first Projects redesign) never picks
+    it up, because 'projects_cards' already exists and setdefault only fills
+    truly-missing keys. Add any default card whose repo isn't already present,
+    once, so earlier deployments catch up. Later owner edits (including
+    deliberately removing a card) are respected after this first run."""
+    cards = cfg.setdefault("projects_cards", [])
+    existing_repos = {c.get("repo") for c in cards}
+    for default_card in DEFAULT_CONFIG["projects_cards"]:
+        if default_card["repo"] not in existing_repos:
+            cards.append(dict(default_card))
 
 
 def save_config(cfg):
