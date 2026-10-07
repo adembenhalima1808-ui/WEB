@@ -20,23 +20,31 @@ function form(fields, buttons, onSubmit, errBox) {
 
 export function createGate({ onEnter }) {
   // ---- 1. start
+  async function enterWith(text, err, btn) {
+    const restore = btn ? btn.textContent : null;
+    if (btn) btn.textContent = 'Waking...';
+    const r = await api('/api/gate', { method: 'POST', body: { text } });
+    if (btn) btn.textContent = restore;
+    if (r.status === 503) return showOffline(r.data.reason);
+    if (!r.ok) { err.textContent = errText(r); return; }
+    if (r.data.stage === 'admin') return showAdminPassword();
+    if (r.data.stage === 'challenge') return showChallenge(r.data);
+    await boot();
+  }
   function showStart(note) {
     const err = h('p', { class: 'err', role: 'alert', text: note || '' });
     const input = h('input', { class: 'field', id: 'company', maxlength: '60', placeholder: 'e.g., Datadog, Hugging Face...', 'aria-label': 'Company name', autocomplete: 'off' });
     const btn = h('button', { class: 'btn primary', type: 'submit', text: 'Wake Agent' });
+    const skip = h('a', { href: '#', class: 'skip-link', text: 'Skip — just show me the CV', onclick: async e => {
+      e.preventDefault(); if (skip.classList.contains('busy')) return;
+      skip.classList.add('busy'); err.textContent = '';
+      try { await enterWith('', err); } finally { skip.classList.remove('busy'); }
+    } });
     screen(reactor('\u{1F98A}', 'sleeping'), h('h2', { text: 'Initialize Neural Link' }),
       h('p', { class: 'muted', text: 'Tell the agent which company you are visiting from, or just wake it up.' }),
-      form([input], [btn], async () => {
-        btn.textContent = 'Waking...';
-        const r = await api('/api/gate', { method: 'POST', body: { text: input.value } });
-        btn.textContent = 'Wake Agent';
-        if (r.status === 503) return showOffline(r.data.reason);
-        if (!r.ok) { err.textContent = errText(r); return; }
-        if (r.data.stage === 'admin') return showAdminPassword();
-        if (r.data.stage === 'challenge') return showChallenge(r.data);
-        await boot();
-      }, err),
-      h('p', { class: 'muted gate-note' }, h('a', { href: '/report', target: '_blank', rel: 'noopener', text: 'See how this agent was tested' })));
+      form([input], [btn], () => enterWith(input.value, err, btn), err),
+      h('p', { class: 'muted gate-note' }, skip, h('span', { 'aria-hidden': 'true', text: ' · ' }),
+        h('a', { href: '/report', target: '_blank', rel: 'noopener', text: 'See how this agent was tested' })));
     focusFirst();
   }
 
