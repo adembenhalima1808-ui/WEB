@@ -21,6 +21,8 @@ from app.settings import DATA_DIR
 
 WAREHOUSE_REPO = "Ilias-Mrtd/Projet--GroupeD"
 KITSUNE_REPO = "adembenhalima1808-ui/WEB"
+CHURN_REPO = "adembenhalima1808-ui/customer-churn-segmentation"
+ALL_DEFAULT_REPOS = {WAREHOUSE_REPO, KITSUNE_REPO, CHURN_REPO}
 CONFIG_PATH = DATA_DIR / "config.json"
 
 
@@ -34,19 +36,18 @@ class BackfillDefaultCardsTests(unittest.TestCase):
         if CONFIG_PATH.exists():
             CONFIG_PATH.unlink()
 
-    def test_stale_config_gains_the_missing_default_card(self):
+    def test_stale_config_gains_every_missing_default_card(self):
         _write_stale_config()
         cfg = config_store.load_config()
         repos = {c["repo"] for c in cfg["projects_cards"]}
-        self.assertIn(KITSUNE_REPO, repos)
-        self.assertIn(WAREHOUSE_REPO, repos)
+        self.assertEqual(repos, ALL_DEFAULT_REPOS)
 
     def test_backfill_runs_once_and_persists_to_disk(self):
         _write_stale_config()
         config_store.load_config()
         on_disk = json.loads(CONFIG_PATH.read_text())
         self.assertTrue(on_disk["_default_cards_backfilled"])
-        self.assertEqual(len(on_disk["projects_cards"]), 2)
+        self.assertEqual(len(on_disk["projects_cards"]), len(ALL_DEFAULT_REPOS))
 
     def test_owner_removal_after_backfill_is_not_undone(self):
         _write_stale_config()
@@ -62,8 +63,7 @@ class BackfillDefaultCardsTests(unittest.TestCase):
     def test_fresh_config_already_has_every_default_card(self):
         cfg = config_store.load_config()
         repos = {c["repo"] for c in cfg["projects_cards"]}
-        self.assertIn(KITSUNE_REPO, repos)
-        self.assertIn(WAREHOUSE_REPO, repos)
+        self.assertEqual(repos, ALL_DEFAULT_REPOS)
 
 
 if __name__ == "__main__":
