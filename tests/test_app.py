@@ -63,12 +63,20 @@ PORT = 8765
 BASE = f"http://127.0.0.1:{PORT}"
 server = uvicorn.Server(uvicorn.Config(main.app, host="127.0.0.1", port=PORT, log_level="error"))
 threading.Thread(target=server.run, daemon=True).start()
+_server_up = False
 for _ in range(100):
     try:
         requests.get(BASE + "/api/auth/me", timeout=0.5)
+        _server_up = True
         break
     except Exception:
         time.sleep(0.1)
+if not _server_up:
+    raise RuntimeError(
+        f"Test server never came up on {BASE} after 10s. Most likely another process "
+        f"is already bound to port {PORT} (check `lsof -i :{PORT}`) rather than a bug "
+        f"in the app under test."
+    )
 
 J = {"Content-Type": "application/json"}
 
@@ -357,14 +365,16 @@ class PublicTests(unittest.TestCase):
 
     def test_config_put_validation(self):
         adm = admin_session()
-        post(adm, "/api/admin/config", {"status_color": "red;}</style>", "title": "T2", "evil_key": 1,
-                                        "refresh_rate": "9999"})
-        cfg = adm.get(BASE + "/api/admin/config").json()
-        self.assertNotEqual(cfg["status_color"], "red;}</style>")
-        self.assertEqual(cfg["title"], "T2")
-        self.assertNotIn("evil_key", cfg)
-        self.assertEqual(cfg["refresh_rate"], 60)
-        post(adm, "/api/admin/config", {"title": "Adem Ben Halima"})
+        try:
+            post(adm, "/api/admin/config", {"status_color": "red;}</style>", "title": "T2", "evil_key": 1,
+                                            "refresh_rate": "9999"})
+            cfg = adm.get(BASE + "/api/admin/config").json()
+            self.assertNotEqual(cfg["status_color"], "red;}</style>")
+            self.assertEqual(cfg["title"], "T2")
+            self.assertNotIn("evil_key", cfg)
+            self.assertEqual(cfg["refresh_rate"], 60)
+        finally:
+            post(adm, "/api/admin/config", {"title": "Adem Ben Halima"})
 
     def test_skills_toggle_and_manual(self):
         adm = admin_session()
