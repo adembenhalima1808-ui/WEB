@@ -53,6 +53,8 @@ FAMILY_UI = {
         "placeholder": "Talk to me bestie...", "avatars": ["\U0001F98A", "\U0001F469\u200D\U0001F4BB"],
         "prompts": ["Tell me a funny story about Adem.", "Who is right in our argument?",
                     "Do you think Adem is annoying sometimes?"],
+        "sass_trigger": {"label": "She\u2019s getting sassy \U0001F624",
+                         "text": "ok you are being sassy, i might have to ask adem to fix you"},
         "radar": {"categories": ["Patience (with Adem)", "Roasting Skills", "Being Right", "Making Adem Smile",
                                  "Stubbornness", "Support"], "scores": [95, 85, 100, 100, 90, 100]},
         "tools_title": "Wife Utilities",
@@ -547,7 +549,11 @@ def h_family_chat(ctx, body):
     persona = cfg["private1_persona_prompt"] if ctx.role == "sara" else cfg["private2_persona_prompt"]
     hist = sara_history() if ctx.role == "sara" else sanitize_history(body.get("history"))
     ctxt = f"Company Name: {FAMILY[ctx.role]}\n{FAMILY_BG[ctx.role]}"
-    reply = rag.answer(msg, hist, ctxt, persona, guardrails=False)   # private areas keep their own persona
+    brain_file = "sara_brain.txt" if ctx.role == "sara" else "egi_brain.txt"
+    notes = read_text(brain_file, "")
+    # private areas keep their own persona and personal memory, never the recruiter CV/brain
+    reply = rag.answer(msg, hist, ctxt, persona, include_cv=False, guardrails=False,
+                       context_docs=[notes] if notes else [], recruiter_facts=False)
     if ctx.role == "sara":
         def _do(h):
             h.extend([{"role": "user", "content": msg}, {"role": "assistant", "content": reply}])

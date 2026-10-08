@@ -17,6 +17,10 @@ data/chat_logs.json
 data/live_chat.json
 data/brain_index.json
 data/resume_source.json
+data/sara_history.json
+data/sara_photos/
+data/sara_brain.txt
+data/egi_brain.txt
 data/*.log
 
 # labelling desk data (private messages; never commit)

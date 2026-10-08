@@ -197,6 +197,7 @@ export async function buildApp({ role, cfg, me }) {
     const chat = createChat({
       avatars: ui.avatars, placeholder: ui.placeholder, prompts: ui.prompts.slice(), greeting: ui.greeting, saved: ui.history || [], title: ui.chat_title,
       send: (text, hist) => api('/api/family/chat', { method: 'POST', body: { message: text, history: hist } }),
+      sideButton: ui.sass_trigger || null,
     });
     tabs.panels[0].append(chat.el);
     tabs.panels[1].append(createTools({ title: ui.tools_title, tools: ui.tools }).el);
