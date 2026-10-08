@@ -127,8 +127,24 @@ function personaField(root, key, label) {
     } }), out, h('hr'));
 }
 
+// One family memory file (sara_brain.txt / egi_brain.txt), saved through a role-scoped endpoint so the
+// gitignored memory content never has to live in the repo - this console is the actual delivery path to
+// wherever the site is deployed, same as the persona prompt field above it.
+function familyBrainField(root, area, label) {
+  const field = h('textarea', { class: 'textarea brain', rows: '16', 'aria-label': label });
+  const out = h('p', { class: 'err', role: 'status' });
+  api(`/api/admin/family/brain?area=${area}`).then(r => { if (guard(r) && r.ok) field.value = r.data.text; });
+  root.append(h('h4', { text: label }),
+    h('p', { class: 'hint', text: 'Real nicknames, inside jokes and stories the bot draws on naturally. Not committed to git - this is the only place this lives.' }),
+    field,
+    h('button', { class: 'btn primary', type: 'button', text: 'Save memory', onclick: async () => {
+      const r = await api('/api/admin/family/brain', { method: 'POST', body: { area, text: field.value } }); if (guard(r)) msg(out, r, 'Saved.');
+    } }), out, h('hr'));
+}
+
 function private1Panel(root) {
   personaField(root, 'private1_persona_prompt', 'Private Area 1 persona prompt');
+  familyBrainField(root, 'private1', 'Private Area 1 memory');
   root.append(h('button', { class: 'btn danger', type: 'button', text: 'Wipe private chat history', onclick: async () => {
     if (!confirm('Permanently erase the private chat history?')) return;
     const r = await api('/api/admin/wipe-history', { method: 'POST' }); if (guard(r)) toast(r.ok ? 'History wiped.' : errText(r));
@@ -200,6 +216,7 @@ function private1Panel(root) {
 
 function private2Panel(root) {
   personaField(root, 'private2_persona_prompt', 'Private Area 2 persona prompt');
+  familyBrainField(root, 'private2', 'Private Area 2 memory');
 }
 
 function brain(root) {

@@ -887,6 +887,28 @@ def h_admin_brain_append(ctx, body):
     return {"ok": True}
 
 
+# Keyed by the same "private1"/"private2" terms the frontend already uses for these areas (not "sara"/"egi" -
+# those names must never appear in frontend JS, per the public-leak security test).
+FAMILY_BRAIN_FILE = {"private1": "sara_brain.txt", "private2": "egi_brain.txt"}
+
+
+@api(roles=("admin",), methods=("GET",))
+def h_admin_family_brain_get(ctx, body):
+    name = FAMILY_BRAIN_FILE.get(ctx.query.get("area"))
+    if not name:
+        return {"error": "Unknown area"}, 400
+    return {"text": read_text(name, "")}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_family_brain_put(ctx, body):
+    name = FAMILY_BRAIN_FILE.get(body.get("area"))
+    if not name:
+        return {"error": "Unknown area"}, 400
+    write_text(name, str(body.get("text", ""))[:200000])
+    return {"ok": True}
+
+
 @api(roles=("admin",), limit=10, window=60)
 def h_admin_clear_cache(ctx, body):
     rag.clear_cache()
@@ -1084,6 +1106,8 @@ routes = [
     Route("/api/admin/brain", h_admin_brain_get, methods=["GET"]),
     Route("/api/admin/brain", h_admin_brain_put, methods=["POST"]),
     Route("/api/admin/brain/append", h_admin_brain_append, methods=["POST"]),
+    Route("/api/admin/family/brain", h_admin_family_brain_get, methods=["GET"]),
+    Route("/api/admin/family/brain", h_admin_family_brain_put, methods=["POST"]),
     Route("/api/admin/resume", h_admin_resume, methods=["POST"]),
     Route("/api/admin/resume/reset", h_admin_resume_reset, methods=["POST"]),
     Route("/api/admin/profile", h_admin_profile, methods=["GET"]),
