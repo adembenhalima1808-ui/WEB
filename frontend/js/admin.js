@@ -1,13 +1,13 @@
 // Owner console. Every endpoint it calls is server-checked for the admin role.
-import { $, api, h, errText, toast, readFile, downloadText } from './util.js';
+import { api, h, errText, toast, readFile, downloadText } from './util.js';
 import { makeTabs } from './tabs.js';
 
 const guard = r => { if (r.status === 401 || r.status === 403) { toast('Session ended. Sign in again.'); setTimeout(() => location.reload(), 900); return false; } return true; };
 const msg = (box, r, okText) => { box.className = r.ok ? 'err ok' : 'err'; box.textContent = r.ok ? okText : errText(r); };
 
 export function buildAdmin() {
-  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Agentic Training Simulator', 'Profile Sync', 'CMS & Identity', 'Projects', 'Recommendations', 'Private Area 1', 'Private Area 2', 'Vector Brain Injection']);
-  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); simulator(tabs.panels[2]); profileSync(tabs.panels[3]); cms(tabs.panels[4]); projectsPanel(tabs.panels[5]); testimonialsPanel(tabs.panels[6]); private1Panel(tabs.panels[7]); private2Panel(tabs.panels[8]); brain(tabs.panels[9]);
+  const tabs = makeTabs(['Telemetry & Wiretap', 'Telegram Diagnostics', 'Profile Sync', 'CMS & Identity', 'Projects', 'Recommendations', 'Private Area 1', 'Private Area 2', 'Vector Brain Injection']);
+  telemetry(tabs.panels[0]); telegramPanel(tabs.panels[1]); profileSync(tabs.panels[2]); cms(tabs.panels[3]); projectsPanel(tabs.panels[4]); testimonialsPanel(tabs.panels[5]); private1Panel(tabs.panels[6]); private2Panel(tabs.panels[7]); brain(tabs.panels[8]);
   return h('div', {}, tabs.list, ...tabs.panels);
 }
 
@@ -51,34 +51,6 @@ function telegramPanel(root) {
       out.className = r.ok && r.data.cleared ? 'err ok' : 'err'; out.textContent = r.ok && r.data.cleared ? 'Webhook purged. Reply polling is unblocked.' : 'Could not clear the webhook (token missing or rejected).'; } }))), out);
 }
 
-function simulator(root) {
-  const role = h('input', { class: 'field', value: 'Recruiter at Hugging Face', maxlength: '120', 'aria-label': 'Target company and role' });
-  const log = h('div', { class: 'log short', role: 'log', 'aria-live': 'polite', tabindex: '0' });
-  const evalOut = h('div', { class: 'output hide' }); const prompt = h('textarea', { class: 'textarea hide', rows: '10', 'aria-label': 'Suggested master prompt' });
-  const apply = h('button', { class: 'btn primary hide', type: 'button', text: 'Implement Advised Prompt' }); const err = h('p', { class: 'err', role: 'alert' });
-  let chat = []; const busy = on => $('button', root) && root.querySelectorAll('button').forEach(b => { b.disabled = on; });
-  async function turn() {
-    err.textContent = ''; busy(true);
-    const r = await api('/api/admin/sim/turn', { method: 'POST', body: { role: role.value, chat } }); busy(false);
-    if (!guard(r)) return false; if (!r.ok) { err.textContent = errText(r); return false; }
-    r.data.messages.forEach(m => { chat.push(m); const b = h('div', { class: 'msg' }, h('span', { class: 'av', 'aria-hidden': 'true', text: m.role === 'Recruiter' ? '\u{1F9D1}‍\u{1F4BC}' : '\u{1F98A}' }), h('div', {}, h('span', { class: 'who', text: m.role }), m.content)); log.append(b); });
-    log.scrollTop = log.scrollHeight; return true;
-  }
-  root.append(h('h3', { text: 'Agentic Training Simulator' }), h('p', { class: 'muted', text: 'A simulated interviewer questions the agent, then a judge critiques the master prompt.' }), role,
-    h('div', { class: 'row' },
-      h('button', { class: 'btn', type: 'button', text: 'Run 1 turn', onclick: turn }),
-      h('button', { class: 'btn', type: 'button', text: 'Run 3 turns', onclick: async () => { for (let i = 0; i < 3; i++) if (!(await turn())) break; } }),
-      h('button', { class: 'btn', type: 'button', text: 'Evaluate', onclick: async () => {
-        err.textContent = ''; busy(true);
-        const r = await api('/api/admin/sim/evaluate', { method: 'POST', body: { role: role.value, chat } }); busy(false);
-        if (!guard(r)) return; if (!r.ok) { err.textContent = errText(r); return; }
-        evalOut.className = 'output'; evalOut.textContent = ''; evalOut.append(h('h4', { text: 'Evaluation' }), h('div', { class: 'body', text: r.data.evaluation }));
-        const sug = r.data.suggested_prompt || ''; prompt.value = sug; prompt.classList.toggle('hide', !sug); apply.classList.toggle('hide', !sug);
-      } }),
-      h('button', { class: 'btn', type: 'button', text: 'Reset', onclick: () => { chat = []; log.textContent = ''; evalOut.className = 'output hide'; prompt.classList.add('hide'); apply.classList.add('hide'); } })),
-    h('h4', { text: 'Interview Simulation Log' }), log, evalOut, prompt, apply, err);
-  apply.addEventListener('click', async () => { const r = await api('/api/admin/sim/apply', { method: 'POST', body: { prompt: prompt.value } }); if (guard(r)) toast(r.ok ? 'Persona updated' : errText(r)); });
-}
 
 const FIELDS = [
   ['title', 'Main Hero Title'], ['sidebar_subtitle', 'Sidebar Subtitle'], ['role_title', 'Hero Role Title'], ['location', 'Location'],
@@ -182,7 +154,7 @@ function private1Panel(root) {
   const pFile = h('input', { class: 'field', type: 'file', accept: 'image/jpeg,image/png,image/webp', 'aria-label': 'Select a photo' });
   const pOut = h('p', { class: 'err', role: 'status' }), pList = h('div', { class: 'drafts' });
   function pBox(p) {
-    const img = h('img', { src: `/api/private1/photo/${p.id}`, alt: '', loading: 'lazy', style: 'width:100%;max-height:200px;object-fit:cover;border-radius:6px' });
+    const img = h('img', { src: `/api/private1/photo/${p.id}`, alt: '', loading: 'lazy', class: 'draft-thumb' });
     const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = p.caption || '';
     const place = h('input', { class: 'field', 'data-k': 'place', placeholder: 'e.g. Paris', 'aria-label': 'Place' }); place.value = p.place || '';
     const date = h('input', { class: 'field', type: 'month', 'data-k': 'date', 'aria-label': 'Month' }); date.value = p.date || '';
@@ -231,8 +203,7 @@ function private2Panel(root) {
   const vFile = h('input', { class: 'field', type: 'file', accept: 'video/mp4,video/webm,video/quicktime', 'aria-label': 'Select a video' });
   const vOut = h('p', { class: 'err', role: 'status' }), vList = h('div', { class: 'drafts' });
   function vBox(v) {
-    const player = h('video', { src: `/api/family/video/${v.id}`, controls: true, preload: 'metadata',
-      style: 'width:100%;max-height:220px;border-radius:6px;background:#000' });
+    const player = h('video', { src: `/api/family/video/${v.id}`, controls: true, preload: 'metadata', class: 'draft-video' });
     const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = v.caption || '';
     const reveal = h('input', { class: 'field', type: 'datetime-local', 'data-k': 'reveal_at', 'aria-label': 'Reveal moment' }); reveal.value = v.reveal_at || '';
     const pill = statusPill(v.reveal_at);

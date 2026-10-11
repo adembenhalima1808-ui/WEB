@@ -1048,59 +1048,6 @@ def h_admin_profile_apply(ctx, body):
     return {"ok": True, "changed": changed}
 
 
-def _hist_str(chat):
-    return "\n".join(f"{m['role']}: {m['content']}" for m in chat)
-
-
-@api(roles=("admin",), limit=30, window=60)
-def h_admin_sim_turn(ctx, body):
-    role = clean_text(body.get("role"), 120) or "Recruiter at a tech company"
-    chat = [{"role": m.get("role") if m.get("role") in ("Recruiter", "Kitsune") else "Recruiter",
-             "content": clean_text(m.get("content"), 4000)} for m in (body.get("chat") or [])[-12:]
-            if isinstance(m, dict)]
-    if chat:
-        q_prompt = (f"You are a {role} interviewing Adem's AI twin. Conversation so far:\n{_hist_str(chat)}\n\n"
-                    "Ask ONE follow-up question based on the last answer. Keep it human-like and brief.")
-    else:
-        q_prompt = (f"You are {role} visiting Adem Ben Halima's AI portfolio website. You know you are speaking to his "
-                    "AI digital twin. Ask ONE brief, human-like interview question about Adem's background.")
-    question = mistral.chat([{"role": "user", "content": q_prompt}], temperature=0.7)
-    persona = load_config()["persona_prompt"]
-    answer = rag.answer(question, [], f"Company/Role: {role}\nRecent chat:\n{_hist_str(chat)}", persona)
-    return {"messages": [{"role": "Recruiter", "content": question}, {"role": "Kitsune", "content": answer}]}
-
-
-@api(roles=("admin",), limit=10, window=60)
-def h_admin_sim_eval(ctx, body):
-    role = clean_text(body.get("role"), 120)
-    chat = [{"role": str(m.get("role"))[:12], "content": clean_text(m.get("content"), 4000)}
-            for m in (body.get("chat") or [])[-24:] if isinstance(m, dict)]
-    if not chat:
-        return {"error": "Run the simulation first."}, 400
-    persona = load_config()["persona_prompt"]
-    prompt = (f"You are a Master AI Evaluator. Review this interview exchange for the role of {role}:\n\n"
-              f"INTERVIEW LOG:\n{_hist_str(chat)}\n\nCURRENT MASTER PROMPT:\n{persona}\n\n"
-              "Evaluate Kitsune's answers on conversational flow, tone, and adherence to the persona.\n"
-              "Respond EXACTLY in this format:\n\nSCORE: [score out of 100]\n\nCRITIQUE: [what was weak, missing, "
-              "or robotic]\n\nSUGGESTED_PROMPT:\n[the complete updated master persona prompt, no code blocks]")
-    raw = mistral.chat([{"role": "user", "content": prompt}], model=mistral.MEDIUM, temperature=0.2, heavy=True)
-    if "SUGGESTED_PROMPT:" in raw:
-        ev, new = raw.split("SUGGESTED_PROMPT:", 1)
-        return {"evaluation": ev.strip(), "suggested_prompt": new.strip()}
-    return {"evaluation": raw, "suggested_prompt": ""}
-
-
-@api(roles=("admin",), limit=10, window=60)
-def h_admin_sim_apply(ctx, body):
-    prompt = clean_text(body.get("prompt"), 6000)
-    if not prompt:
-        return {"error": "Empty prompt"}, 400
-    cfg = load_config()
-    cfg["persona_prompt"] = prompt
-    save_config(cfg)
-    return {"ok": True}
-
-
 # ----------------------------------------------------------------------------- pages & wiring
 def page(name):
     async def handler(request):
@@ -1196,9 +1143,6 @@ routes = [
     Route("/api/admin/profile/apply", h_admin_profile_apply, methods=["POST"]),
     Route("/api/admin/clear-cache", h_admin_clear_cache, methods=["POST"]),
     Route("/api/admin/wipe-history", h_admin_wipe_sara, methods=["POST"]),
-    Route("/api/admin/sim/turn", h_admin_sim_turn, methods=["POST"]),
-    Route("/api/admin/sim/evaluate", h_admin_sim_eval, methods=["POST"]),
-    Route("/api/admin/sim/apply", h_admin_sim_apply, methods=["POST"]),
     Route("/derja", page("derja/index.html")),
     Route("/api/derja/login", h_derja_login, methods=["POST"]),
     Route("/api/derja/state", h_derja_state, methods=["GET"]),

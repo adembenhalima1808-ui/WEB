@@ -98,8 +98,7 @@ def admin_session():
 ADMIN_GETS = ["/api/admin/overview", "/api/admin/testimonials", "/api/admin/projects", "/api/admin/config", "/api/admin/brain", "/api/admin/profile"]
 ADMIN_POSTS = ["/api/admin/config", "/api/admin/testimonials", "/api/admin/projects", "/api/admin/telegram/test", "/api/admin/telegram/clear", "/api/admin/brain",
                "/api/admin/brain/append", "/api/admin/clear-cache", "/api/admin/resume", "/api/admin/wipe-history",
-               "/api/admin/sim/turn", "/api/admin/sim/evaluate", "/api/admin/sim/apply", "/api/admin/resume/reset",
-               "/api/admin/profile/yaml", "/api/admin/profile/draft", "/api/admin/profile/apply"]
+               "/api/admin/resume/reset", "/api/admin/profile/yaml", "/api/admin/profile/draft", "/api/admin/profile/apply"]
 
 
 class SecurityTests(unittest.TestCase):
@@ -486,13 +485,6 @@ class PublicTests(unittest.TestCase):
         self.assertIn("NEW FACT", adm.get(BASE + "/api/admin/brain").json()["text"])
         self.assertEqual(post(adm, "/api/admin/brain", {"text": ""}).status_code, 400)
         post(adm, "/api/admin/brain", {"text": orig})
-
-    def test_simulator(self):
-        adm = admin_session()
-        r = post(adm, "/api/admin/sim/turn", {"role": "Recruiter at HF", "chat": []}).json()
-        self.assertEqual([m["role"] for m in r["messages"]], ["Recruiter", "Kitsune"])
-        ev = post(adm, "/api/admin/sim/evaluate", {"role": "x", "chat": r["messages"]})
-        self.assertEqual(ev.status_code, 200)
 
 
 class RagTests(unittest.TestCase):
