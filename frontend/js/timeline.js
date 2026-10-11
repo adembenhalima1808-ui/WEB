@@ -245,7 +245,7 @@ function openAddVideoModal({ onSaved }) {
     addBtn.disabled = true; out.className = 'err'; out.textContent = '';
     const data = await readFile(f, true);
     const r = await api('/api/private2/videos', { method: 'POST',
-      body: { video_b64: String(data).split(',')[1] || '', caption: caption.value, reveal_at: reveal.value } });
+      body: { video_b64: String(data).split(',')[1] || '', caption: caption.value, reveal_at: new Date(reveal.value).toISOString() } });
     addBtn.disabled = false;
     if (!r.ok) { out.textContent = errText(r); return; }
     close(); onSaved(r.data.videos);

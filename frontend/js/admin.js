@@ -200,12 +200,19 @@ function private2Panel(root) {
       (new Date(revealAt).getTime() - Date.now() <= 0 ? '\u{1F7E2} Live now' : `⏳ Unlocks in ${fmtDiff(new Date(revealAt).getTime() - Date.now())}`); };
     tick(); const t = setInterval(tick, 1000); pill._stop = () => clearInterval(t); return pill;
   }
+  // reveal_at always travels as a real UTC instant ("...Z"); a <input type="datetime-local">
+  // only ever shows/accepts a naive LOCAL wall-clock string, so it's converted at this boundary
+  // in both directions - comparing local time here against local time on the server (which may
+  // be a different timezone entirely) is exactly how the countdown stopped unlocking on time.
+  const utcToLocalValue = iso => { if (!iso) return ''; const d = new Date(iso); if (Number.isNaN(d.getTime())) return '';
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+  const localValueToUTC = v => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toISOString(); };
   const vFile = h('input', { class: 'field', type: 'file', accept: 'video/mp4,video/webm,video/quicktime', 'aria-label': 'Select a video' });
   const vOut = h('p', { class: 'err', role: 'status' }), vList = h('div', { class: 'drafts' });
   function vBox(v) {
     const player = h('video', { src: `/api/family/video/${v.id}`, controls: true, preload: 'metadata', class: 'draft-video' });
     const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = v.caption || '';
-    const reveal = h('input', { class: 'field', type: 'datetime-local', 'data-k': 'reveal_at', 'aria-label': 'Reveal moment' }); reveal.value = v.reveal_at || '';
+    const reveal = h('input', { class: 'field', type: 'datetime-local', 'data-k': 'reveal_at', 'aria-label': 'Reveal moment' }); reveal.value = utcToLocalValue(v.reveal_at);
     const pill = statusPill(v.reveal_at);
     const b = h('div', { class: 'draft', 'data-id': v.id }, player, h('div', { class: 'row' }, pill),
       h('div', { class: 'cfg' }, h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Caption' }), caption),
@@ -216,7 +223,7 @@ function private2Panel(root) {
     return b;
   }
   const readV = b => ({ id: b.dataset.id, caption: b.querySelector('[data-k="caption"]').value.trim(),
-    reveal_at: b.querySelector('[data-k="reveal_at"]').value.trim() });
+    reveal_at: localValueToUTC(b.querySelector('[data-k="reveal_at"]').value.trim()) });
   const renderV = items => { [...vList.children].forEach(b => b._stopPill && b._stopPill()); vList.replaceChildren(...items.map(vBox)); };
   const vUpload = h('button', { class: 'btn', type: 'button', text: 'Upload video', onclick: async () => {
     const f = vFile.files[0]; if (!f) { vOut.className = 'err'; vOut.textContent = 'Choose a video first.'; return; }

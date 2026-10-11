@@ -1,6 +1,7 @@
 """Video surprises Egi drops for Sara: upload, caption, pick a reveal moment, and serve them
 behind a family passphrase. A video stays a countdown card for Sara, Egi and the admin panel
 until its reveal time passes, then it plays - same list, same endpoint, only the clock changes."""
+import datetime
 import re
 import secrets
 import time
@@ -14,7 +15,11 @@ VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_BYTES = 40_000_000
 ID_RE = re.compile(r"[0-9a-f]{24}\.(mp4|webm|mov)")
-REVEAL_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
+# A full UTC instant (e.g. "2026-10-12T17:00:00.000Z", what JS Date#toISOString() produces),
+# never a naive local time string - the browser picking the moment and the server checking it
+# are almost never in the same timezone, so comparing local wall-clock strings drifts by
+# whatever the gap between those two timezones is, and the video just never unlocks on time.
+REVEAL_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z")
 
 
 def _ext_for(raw):
@@ -52,7 +57,8 @@ def revealed(entry, now=None):
     reveal_at = entry.get("reveal_at", "")
     if not REVEAL_RE.fullmatch(reveal_at or ""):
         return True
-    return (now or time.strftime("%Y-%m-%dT%H:%M")) >= reveal_at
+    target = datetime.datetime.strptime(reveal_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+    return (now or datetime.datetime.utcnow()) >= target
 
 
 def _sorted(items):
@@ -66,7 +72,7 @@ def clean(items):
     for v in (items if isinstance(items, list) else [])[:30]:
         if not isinstance(v, dict) or not video_path(v.get("id")):
             continue
-        reveal_at = clean_text(v.get("reveal_at"), 16)
+        reveal_at = clean_text(v.get("reveal_at"), 24)
         out.append({"id": v["id"], "caption": clean_text(v.get("caption"), 300),
                     "reveal_at": reveal_at if REVEAL_RE.fullmatch(reveal_at) else "",
                     "created_at": v.get("created_at") if isinstance(v.get("created_at"), (int, float)) else time.time()})
@@ -81,7 +87,7 @@ def current():
 
 def current_with_status():
     """Same list, each entry stamped with whether its reveal moment has arrived yet."""
-    now = time.strftime("%Y-%m-%dT%H:%M")
+    now = datetime.datetime.utcnow()
     return [{**v, "revealed": revealed(v, now)} for v in current()]
 
 

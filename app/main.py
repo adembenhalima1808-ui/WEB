@@ -822,7 +822,7 @@ def h_private2_video_add(ctx, body):
     """Egi dropping a video surprise for Sara, with a reveal moment she picks herself - it
     shows as a countdown on the admin panel and Sara's page until then, no owner-console trip needed."""
     import base64
-    reveal_at = clean_text(body.get("reveal_at"), 16)
+    reveal_at = clean_text(body.get("reveal_at"), 24)
     if not videos.REVEAL_RE.fullmatch(reveal_at):
         return {"error": "Pick a date and time first."}, 400
     try:
