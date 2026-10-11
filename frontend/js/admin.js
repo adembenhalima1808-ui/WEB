@@ -217,6 +217,51 @@ function private1Panel(root) {
 function private2Panel(root) {
   personaField(root, 'private2_persona_prompt', 'Private Area 2 persona prompt');
   familyBrainField(root, 'private2', 'Private Area 2 memory');
+
+  // ---- video drops: she drops these for private area 1; each one a countdown here and on
+  // private area 1's page until its reveal moment, then it plays
+  const fmtDiff = ms => { const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), hh = Math.floor(s / 3600) % 24, mm = Math.floor(s / 60) % 60;
+    return d ? `${d}d ${hh}h` : hh ? `${hh}h ${mm}m` : `${mm}m`; };
+  function statusPill(revealAt) {
+    const pill = h('span', { class: 'pill' });
+    const tick = () => { pill.textContent = !revealAt ? '\u{1F7E2} Always visible' :
+      (new Date(revealAt).getTime() - Date.now() <= 0 ? '\u{1F7E2} Live now' : `⏳ Unlocks in ${fmtDiff(new Date(revealAt).getTime() - Date.now())}`); };
+    tick(); const t = setInterval(tick, 1000); pill._stop = () => clearInterval(t); return pill;
+  }
+  const vFile = h('input', { class: 'field', type: 'file', accept: 'video/mp4,video/webm,video/quicktime', 'aria-label': 'Select a video' });
+  const vOut = h('p', { class: 'err', role: 'status' }), vList = h('div', { class: 'drafts' });
+  function vBox(v) {
+    const player = h('video', { src: `/api/family/video/${v.id}`, controls: true, preload: 'metadata',
+      style: 'width:100%;max-height:220px;border-radius:6px;background:#000' });
+    const caption = h('textarea', { class: 'textarea', rows: '2', 'data-k': 'caption', 'aria-label': 'Caption' }); caption.value = v.caption || '';
+    const reveal = h('input', { class: 'field', type: 'datetime-local', 'data-k': 'reveal_at', 'aria-label': 'Reveal moment' }); reveal.value = v.reveal_at || '';
+    const pill = statusPill(v.reveal_at);
+    const b = h('div', { class: 'draft', 'data-id': v.id }, player, h('div', { class: 'row' }, pill),
+      h('div', { class: 'cfg' }, h('div', { class: 'wide' }, h('label', { class: 'lbl', text: 'Caption' }), caption),
+        h('div', {}, h('label', { class: 'lbl', text: 'Reveal moment' }), reveal)),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn danger', type: 'button', text: 'Remove', onclick: () => { pill._stop(); b.remove(); } })));
+    b._stopPill = pill._stop;
+    return b;
+  }
+  const readV = b => ({ id: b.dataset.id, caption: b.querySelector('[data-k="caption"]').value.trim(),
+    reveal_at: b.querySelector('[data-k="reveal_at"]').value.trim() });
+  const renderV = items => { [...vList.children].forEach(b => b._stopPill && b._stopPill()); vList.replaceChildren(...items.map(vBox)); };
+  const vUpload = h('button', { class: 'btn', type: 'button', text: 'Upload video', onclick: async () => {
+    const f = vFile.files[0]; if (!f) { vOut.className = 'err'; vOut.textContent = 'Choose a video first.'; return; }
+    const data = await readFile(f, true);
+    const r = await api('/api/admin/family/videos/upload', { method: 'POST', body: { video_b64: String(data).split(',')[1] || '' } });
+    if (!guard(r)) return; if (!r.ok) { msg(vOut, r); return; }
+    vList.append(vBox({ id: r.data.id, caption: '', reveal_at: '' })); vOut.className = 'err ok'; vOut.textContent = 'Uploaded. Set a caption and reveal moment below, then save.'; vFile.value = '';
+  } });
+  root.append(h('hr'), h('h3', { text: 'Video drops' }),
+    h('p', { class: 'hint', text: 'Each video stays a countdown here and on private area 1’s page until its reveal moment, then it plays. She can also add or remove her own, no trip here needed.' }),
+    vFile, vUpload, h('hr'), vList, h('div', { class: 'row' },
+      h('button', { class: 'btn primary', type: 'button', text: 'Save videos', onclick: async () => {
+        const r = await api('/api/admin/family/videos', { method: 'POST', body: { videos: [...vList.children].map(readV) } }); if (!guard(r)) return;
+        msg(vOut, r, 'Saved.'); if (r.ok) renderV(r.data.videos);
+      } })), vOut);
+  api('/api/admin/family/videos').then(r => { if (guard(r) && r.ok) renderV(r.data.videos); });
 }
 
 function brain(root) {

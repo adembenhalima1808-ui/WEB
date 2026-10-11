@@ -23,7 +23,7 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
-from . import gallery, github, labeler, mistral, profile, quotes, rag, resume, security, settings, telegram, testimonials
+from . import gallery, github, labeler, mistral, profile, quotes, rag, resume, security, settings, telegram, testimonials, videos
 from .config_store import DEFAULT_CONFIG, EDITABLE, load_config, public_config, save_config
 from .security import clean_text, limiter
 from .storage import increment_metric, read_json, read_text, update_json, write_json, write_text
@@ -72,13 +72,11 @@ FAMILY_UI = {
         "theme": "b", "name": "Egi", "icon": "\U0001F608",
         "title": "The Loser's Lounge", "role_line": "Sara's Sister", "location": "In Adem's Shadow",
         "intro": "Welcome to the roast room, Egi. Try not to cry.",
-        "radar_title": "Egi's Flaw Radar", "caption": "Sara's Sister",
+        "caption": "Sara's Sister",
         "badge": "EGI DETECTED", "badge_sub": "Far superior to you",
         "tabs": ["Roast Session", "Reality Check", "Direct Comm-Link"], "chat_title": "The Roast Box",
         "placeholder": "Say something dumb...", "avatars": ["\U0001F608", "\U0001F921"],
         "prompts": ["Am I the favorite?", "Roast me.", "Tell me a joke about me."],
-        "radar": {"categories": ["Being Loud", "Annoying Adem", "Delusion", "Sarcasm", "Complaining",
-                                 "Actually Trying"], "scores": [99, 100, 95, 85, 90, 10]},
         "tools_title": "Reality Check",
         "tools": [
             {"id": "roast", "heading": "Request a Custom Roast", "label": "Roast Me", "input": "line",
@@ -531,6 +529,10 @@ def h_family_state(ctx, body):
         ui["greeting"] = ("{g}.\n\nI am Adem's highly advanced AI agent. He built me because he's a genius, something "
                           "you wouldn't know much about.\n\nGo ahead, ask me something. I'll try to use small words "
                           "so you can understand.")
+    # Egi drops the videos (with a reveal moment she picks); Sara only ever watches the result,
+    # same countdown-then-player either side, so both read the same list straight from disk.
+    ui["videos"] = videos.current_with_status()
+    ui["videos_editable"] = ctx.role == "egi"
     if ctx.role == "sara":
         g = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
     else:
@@ -773,6 +775,30 @@ def h_admin_sara_quotes_put(ctx, body):
     return {"ok": True, "quotes": cfg["sara_quotes"]}
 
 
+@api(roles=("admin",), methods=("GET",))
+def h_admin_family_videos_get(ctx, body):
+    return {"videos": videos.current_with_status()}
+
+
+@api(roles=("admin",), limit=20, window=60)
+def h_admin_family_videos_put(ctx, body):
+    return {"ok": True, "videos": videos.save(body.get("videos"))}
+
+
+@api(roles=("admin",), limit=10, window=300)
+def h_admin_family_video_upload(ctx, body):
+    import base64
+    try:
+        raw = base64.b64decode(str(body.get("video_b64", "")), validate=True)
+    except Exception:
+        return {"error": "Invalid upload"}, 400
+    try:
+        video_id = videos.save_upload(raw)
+    except ValueError as e:
+        return {"error": str(e)}, 422
+    return {"ok": True, "id": video_id}
+
+
 @api(roles=("sara",), limit=10, window=300)
 def h_private1_photo_add(ctx, body):
     """Sara adding her own picture to the timeline, no owner-console trip needed."""
@@ -789,6 +815,35 @@ def h_private1_photo_add(ctx, body):
              "place": clean_text(body.get("place"), 80), "date": clean_text(body.get("date"), 7)}
     photos = gallery.save(gallery.current() + [entry])
     return {"ok": True, "photos": photos}
+
+
+@api(roles=("egi",), limit=6, window=300)
+def h_private2_video_add(ctx, body):
+    """Egi dropping a video surprise for Sara, with a reveal moment she picks herself - it
+    shows as a countdown on the admin panel and Sara's page until then, no owner-console trip needed."""
+    import base64
+    reveal_at = clean_text(body.get("reveal_at"), 16)
+    if not videos.REVEAL_RE.fullmatch(reveal_at):
+        return {"error": "Pick a date and time first."}, 400
+    try:
+        raw = base64.b64decode(str(body.get("video_b64", "")), validate=True)
+    except Exception:
+        return {"error": "Invalid upload"}, 400
+    try:
+        video_id = videos.save_upload(raw)
+    except ValueError as e:
+        return {"error": str(e)}, 422
+    entry = {"id": video_id, "caption": clean_text(body.get("caption"), 300), "reveal_at": reveal_at}
+    videos.save(videos.current() + [entry])
+    return {"ok": True, "videos": videos.current_with_status()}
+
+
+@api(roles=("egi",), limit=15, window=300)
+def h_private2_video_delete(ctx, body):
+    """Egi pulling back one of her own videos before (or after) it drops."""
+    vid = clean_text(body.get("id"), 40)
+    videos.save([v for v in videos.current() if v["id"] != vid])
+    return {"ok": True, "videos": videos.current_with_status()}
 
 
 MOODS = {"\U0001F970 Loved", "\U0001F60D Missing you", "\U0001F622 Sad", "\U0001F624 Annoyed",
@@ -848,6 +903,25 @@ async def h_sara_photo(request):
     p = gallery.photo_path(request.path_params.get("photo_id", ""))
     if not p:
         return JSONResponse({"error": "Not found"}, 404)
+    return FileResponse(p, headers={"Cache-Control": "private, max-age=86400"})
+
+
+async def h_family_video(request):
+    """Serve a stored video to Sara, Egi or the owner. Sara and Egi both need its reveal moment
+    to have arrived - the owner can preview early since he manages the drop from the console."""
+    ctx = Ctx(request)
+    if ctx.role not in ("sara", "egi", "admin"):
+        return JSONResponse({"error": "Forbidden"}, 403)
+    if not limiter.allow(f"family-video:{ctx.ip}", 60, 60):
+        return JSONResponse({"error": "Too many requests, slow down."}, 429)
+    video_id = request.path_params.get("video_id", "")
+    p = videos.video_path(video_id)
+    if not p:
+        return JSONResponse({"error": "Not found"}, 404)
+    if ctx.role != "admin":
+        entry = next((v for v in videos.current() if v["id"] == video_id), None)
+        if not entry or not videos.revealed(entry):
+            return JSONResponse({"error": "Not revealed yet"}, 403)
     return FileResponse(p, headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -1097,8 +1171,14 @@ routes = [
     Route("/api/admin/private1/photos/upload", h_admin_sara_photo_upload, methods=["POST"]),
     Route("/api/admin/private1/quotes", h_admin_sara_quotes_get, methods=["GET"]),
     Route("/api/admin/private1/quotes", h_admin_sara_quotes_put, methods=["POST"]),
+    Route("/api/admin/family/videos", h_admin_family_videos_get, methods=["GET"]),
+    Route("/api/admin/family/videos", h_admin_family_videos_put, methods=["POST"]),
+    Route("/api/admin/family/videos/upload", h_admin_family_video_upload, methods=["POST"]),
     Route("/api/private1/photo/{photo_id}", h_sara_photo, methods=["GET"]),
+    Route("/api/family/video/{video_id}", h_family_video, methods=["GET"]),
     Route("/api/private1/photos", h_private1_photo_add, methods=["POST"]),
+    Route("/api/private2/videos", h_private2_video_add, methods=["POST"]),
+    Route("/api/private2/videos/delete", h_private2_video_delete, methods=["POST"]),
     Route("/api/private1/mood", h_private1_mood, methods=["POST"]),
     Route("/api/private1/memory-comment", h_private1_memory_comment, methods=["POST"]),
     Route("/api/admin/telegram/test", h_admin_tg_test, methods=["POST"]),

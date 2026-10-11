@@ -5,7 +5,7 @@ import { makeTabs } from './tabs.js';
 import { createChat, createComm, createOps, createTools } from './chat.js';
 import { buildAdmin } from './admin.js';
 import { projectCard } from './project-card.js';
-import { renderTimeline, renderQuoteMarquee, renderMemoryOfDay } from './timeline.js';
+import { renderTimeline, renderQuoteMarquee, renderMemoryOfDay, renderVideoReel } from './timeline.js';
 
 // How many project cards the homepage shows before linking out to /projects,
 // so the page stays short no matter how many projects get added later.
@@ -186,10 +186,11 @@ export async function buildApp({ role, cfg, me }) {
       if (ui.quotes && ui.quotes.length) { const qb = h('div'); main.append(qb, h('hr')); renderQuoteMarquee(qb, ui.quotes); }
       main.append(h('h3', { text: 'Our Timeline' }));
       const tb = h('div'); main.append(tb, h('hr')); openMemory = renderTimeline(tb, photos).open;
-    } else {
-      main.append(h('h3', { text: ui.radar_title }));
-      const rb = h('div', { class: 'radar-wrap' }); main.append(rb, h('hr'));
-      drawRadar(rb, ui.radar.categories, ui.radar.scores);
+    }
+    if ('videos' in ui) {
+      main.append(h('h3', { text: 'Our Videos' }));
+      const vb = h('div'); main.append(vb, h('hr'));
+      renderVideoReel(vb, ui.videos || [], { editable: !!ui.videos_editable });
     }
     const comm = cfg.human_comm_enabled ? createComm({ avatar: ui.avatars[0], refresh }) : null;
     const labels = comm ? ui.tabs : ui.tabs.slice(0, 2);
